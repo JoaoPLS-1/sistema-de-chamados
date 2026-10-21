@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NestJS + Prisma + MySQL</title>
+<style>
+  :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --code:#1e293b; --ok:#4ade80; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:20px/1.5 system-ui, sans-serif; }
+  section { display:none; min-height:100vh; padding:48px 64px 80px; max-width:1100px; margin:auto; }
+  section.ativo { display:block; }
+  h1 { font-size:2.4rem; color:var(--accent); margin:0 0 .4em; }
+  h2 { font-size:1.8rem; color:var(--accent); margin:0 0 .6em; }
+  p, li { color:var(--fg); }
+  .muted { color:var(--muted); }
+  pre { background:var(--code); padding:16px 20px; border-radius:8px; overflow:auto; font-size:.8rem; line-height:1.45; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  p code, li code { background:var(--code); padding:2px 6px; border-radius:4px; font-size:.85em; }
+  .arquivo { color:var(--ok); font-size:.8rem; margin:12px 0 -8px; font-family:ui-monospace,monospace; }
+  nav { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center;
+        padding:12px 24px; background:#020617; color:var(--muted); font-size:.8rem; }
+  nav button { background:var(--code); color:var(--fg); border:0; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:.9rem; }
+  table { border-collapse:collapse; font-size:.9rem; }
+  td, th { border:1px solid #334155; padding:6px 14px; text-align:left; }
+</style>
+</head>
+<body>
+
+<section>
+  <h1>API de Tarefas com NestJS + Prisma + MySQL</h1>
+  <p>Do zero ao CRUD funcionando — passo a passo</p>
+  <p class="muted">SENAI · Técnico em Desenvolvimento de Sistemas</p>
+  <p class="muted">Use as setas ← → do teclado para navegar</p>
+</section>
+
+<section>
+  <h2>O que vamos construir</h2>
+  <ul>
+    <li>Uma API REST para cadastro de <strong>tarefas</strong></li>
+    <li>Criar, listar, buscar, atualizar e remover (CRUD)</li>
+    <li>Dados salvos em um banco <strong>MySQL</strong></li>
+    <li>Acesso ao banco via <strong>ORM</strong> (Prisma), sem escrever SQL à mão</li>
+  </ul>
+  <pre><code>Cliente (HTTP) → Controller → Service → Prisma → MySQL</code></pre>
+</section>
+
+<section>
+  <h2>O que é ORM?</h2>
+  <p><strong>Object-Relational Mapping</strong>: mapeia tabelas do banco para objetos do código.</p>
+  <table>
+    <tr><th>Sem ORM (SQL)</th><th>Com Prisma</th></tr>
+    <tr><td><code>SELECT * FROM Tarefa;</code></td><td><code>prisma.tarefa.findMany()</code></td></tr>
+    <tr><td><code>INSERT INTO Tarefa (titulo) VALUES ('x');</code></td><td><code>prisma.tarefa.create({ data: { titulo: 'x' } })</code></td></tr>
+  </table>
+  <p class="muted">Vantagens: menos SQL manual, tipagem TypeScript, migrações versionadas.</p>
+</section>
+
+<section>
+  <h2>Pré-requisitos</h2>
+  <ul>
+    <li><strong>Node.js</strong> 22 LTS ou superior (<code>node -v</code>)</li>
+    <li><strong>npm</strong> 10 ou superior (<code>npm -v</code>)</li>
+    <li><strong>Docker</strong> (para subir o MySQL sem instalar nada) (<code>docker -v</code>)</li>
+    <li>Um editor (VS Code) e um cliente HTTP (curl, Insomnia ou Postman)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Passo 1 — Criar o projeto NestJS</h2>
+  <pre><code>npx @nestjs/cli new orm-basico
+cd orm-basico</code></pre>
+  <p>Escolha <code>npm</code> como gerenciador de pacotes quando perguntado.</p>
+  <p>Testar: <code>npm run start:dev</code> e abrir <code>http://localhost:3000</code></p>
+  <p class="muted">Estrutura criada: <code>src/main.ts</code> (inicia o app) e <code>src/app.module.ts</code> (módulo raiz).</p>
+</section>
+
+<section>
+  <h2>Passo 2 — Subir o MySQL com Docker</h2>
+  <p class="arquivo">docker-compose.yml</p>
+<pre><code>services:
+  mysql:
+    image: mysql:8.4
+    container_name: tarefas-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tarefas
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:</code></pre>
+  <pre><code>docker compose up -d</code></pre>
+</section>
+
+<section>
+  <h2>Passo 3 — Instalar o Prisma</h2>
+  <pre><code>npm install @prisma/client @prisma/adapter-mariadb dotenv
+npm install -D prisma
+npx prisma init --datasource-provider mysql</code></pre>
+  <ul>
+    <li><code>prisma</code>: ferramenta de linha de comando (migrações, geração do client)</li>
+    <li><code>@prisma/client</code>: biblioteca usada no código para consultar o banco</li>
+    <li><code>@prisma/adapter-mariadb</code>: driver para conectar ao MySQL</li>
+    <li><code>dotenv</code>: lê as variáveis do arquivo <code>.env</code></li>
+  </ul>
+  <p class="muted">O <code>init</code> cria a pasta <code>prisma/</code>, o <code>.env</code> e o arquivo de configuração do Prisma.</p>
+</section>
+
+<section>
+  <h2>Passo 4 — Configurar a conexão</h2>
+  <p class="arquivo">.env</p>
+  <pre><code>DATABASE_URL="mysql://root:root@localhost:3306/tarefas"</code></pre>
+  <p class="arquivo">prisma.config.ts</p>
+<pre><code>import 'dotenv/config';
+import { defineConfig } from 'prisma/config';
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: { path: 'prisma/migrations' },
+  datasource: { url: process.env['DATABASE_URL'] },
+});</code></pre>
+  <p class="muted">Formato da URL: <code>mysql://usuario:senha@host:porta/banco</code></p>
+</section>
+
+<section>
+  <h2>Passo 5 — Definir o modelo (schema)</h2>
+  <p class="arquivo">prisma/schema.prisma</p>
+<pre><code>generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Tarefa {
+  id        Int      @id @default(autoincrement())
+  titulo    String
+  concluida Boolean  @default(false)
+  criadaEm  DateTime @default(now())
+}</code></pre>
+  <p class="muted">Cada <code>model</code> vira uma tabela. Cada campo vira uma coluna.</p>
+</section>
+
+<section>
+  <h2>Passo 6 — Criar a tabela (migração)</h2>
+  <pre><code>npx prisma migrate dev --name criar-tarefas
+npx prisma generate</code></pre>
+  <ul>
+    <li><code>migrate dev</code>: gera o SQL em <code>prisma/migrations</code> e executa no banco</li>
+    <li><code>generate</code>: gera o client TypeScript em <code>src/generated/prisma</code></li>
+  </ul>
+  <p>Sempre que alterar o <code>schema.prisma</code>, rode esses comandos de novo.</p>
+</section>
+
+<section>
+  <h2>Passo 7 — PrismaService</h2>
+  <p>Uma classe do Nest que conecta ao banco e pode ser injetada em qualquer lugar.</p>
+  <p class="arquivo">src/prisma/prisma.service.ts</p>
+<pre><code>import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { PrismaClient } from '../generated/prisma/client.js';
+
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleInit {
+  constructor() {
+    const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
+    super({ adapter });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+}</code></pre>
+</section>
+
+<section>
+  <h2>Passo 8 — PrismaModule</h2>
+  <p class="arquivo">src/prisma/prisma.module.ts</p>
+<pre><code>import { Global, Module } from '@nestjs/common';
+import { PrismaService } from './prisma.service.js';
+
+@Global()
+@Module({
+  providers: [PrismaService],
+  exports: [PrismaService],
+})
+export class PrismaModule {}</code></pre>
+  <p class="muted"><code>@Global()</code> deixa o PrismaService disponível em todos os módulos sem precisar importar.</p>
+</section>
+
+<section>
+  <h2>Passo 9 — Gerar o módulo de tarefas</h2>
+  <pre><code>npx nest g module tarefas
+npx nest g controller tarefas --no-spec
+npx nest g service tarefas --no-spec</code></pre>
+  <ul>
+    <li><strong>Module</strong>: agrupa as peças da funcionalidade</li>
+    <li><strong>Controller</strong>: recebe as requisições HTTP (rotas)</li>
+    <li><strong>Service</strong>: contém a regra e fala com o banco</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Passo 10 — DTOs</h2>
+  <p>DTO = objeto que descreve os dados que chegam na requisição.</p>
+  <p class="arquivo">src/tarefas/dto/criar-tarefa.dto.ts</p>
+<pre><code>export class CriarTarefaDto {
+  titulo: string;
+}</code></pre>
+  <p class="arquivo">src/tarefas/dto/atualizar-tarefa.dto.ts</p>
+<pre><code>export class AtualizarTarefaDto {
+  titulo?: string;
+  concluida?: boolean;
+}</code></pre>
+</section>
+
+<section>
+  <h2>Passo 11 — Service</h2>
+  <p class="arquivo">src/tarefas/tarefas.service.ts</p>
+<pre><code>@Injectable()
+export class TarefasService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  criar(dto: CriarTarefaDto) {
+    return this.prisma.tarefa.create({ data: { titulo: dto.titulo } });
+  }
+
+  listar() {
+    return this.prisma.tarefa.findMany({ orderBy: { id: 'asc' } });
+  }
+
+  async buscar(id: number) {
+    const tarefa = await this.prisma.tarefa.findUnique({ where: { id } });
+    if (!tarefa) throw new NotFoundException(`Tarefa ${id} não encontrada`);
+    return tarefa;
+  }
+
+  async atualizar(id: number, dto: AtualizarTarefaDto) {
+    await this.buscar(id);
+    return this.prisma.tarefa.update({ where: { id }, data: dto });
+  }
+
+  async remover(id: number) {
+    await this.buscar(id);
+    return this.prisma.tarefa.delete({ where: { id } });
+  }
+}</code></pre>
+</section>
+
+<section>
+  <h2>Passo 12 — Controller</h2>
+  <p class="arquivo">src/tarefas/tarefas.controller.ts</p>
+<pre><code>@Controller('tarefas')
+export class TarefasController {
+  constructor(private readonly tarefasService: TarefasService) {}
+
+  @Post()
+  criar(@Body() dto: CriarTarefaDto) { return this.tarefasService.criar(dto); }
+
+  @Get()
+  listar() { return this.tarefasService.listar(); }
+
+  @Get(':id')
+  buscar(@Param('id', ParseIntPipe) id: number) { return this.tarefasService.buscar(id); }
+
+  @Patch(':id')
+  atualizar(@Param('id', ParseIntPipe) id: number, @Body() dto: AtualizarTarefaDto) {
+    return this.tarefasService.atualizar(id, dto);
+  }
+
+  @Delete(':id')
+  remover(@Param('id', ParseIntPipe) id: number) { return this.tarefasService.remover(id); }
+}</code></pre>
+</section>
+
+<section>
+  <h2>Passo 13 — Juntar tudo no AppModule</h2>
+  <p class="arquivo">src/app.module.ts</p>
+<pre><code>@Module({
+  imports: [PrismaModule, TarefasModule],
+})
+export class AppModule {}</code></pre>
+  <p class="arquivo">src/main.ts (primeira linha)</p>
+<pre><code>import 'dotenv/config';</code></pre>
+  <p class="muted">Isso carrega o <code>.env</code> antes de o Nest iniciar.</p>
+</section>
+
+<section>
+  <h2>Passo 14 — Rodar e testar</h2>
+  <pre><code>npm run start:dev</code></pre>
+<pre><code># criar
+curl -X POST localhost:3000/tarefas \
+  -H 'Content-Type: application/json' \
+  -d '{"titulo":"Estudar NestJS"}'
+
+# listar
+curl localhost:3000/tarefas
+
+# marcar como concluída
+curl -X PATCH localhost:3000/tarefas/1 \
+  -H 'Content-Type: application/json' \
+  -d '{"concluida":true}'
+
+# remover
+curl -X DELETE localhost:3000/tarefas/1</code></pre>
+</section>
+
+<section>
+  <h2>Rotas da API</h2>
+  <table>
+    <tr><th>Método</th><th>Rota</th><th>Ação</th></tr>
+    <tr><td>POST</td><td>/tarefas</td><td>Cria uma tarefa</td></tr>
+    <tr><td>GET</td><td>/tarefas</td><td>Lista todas</td></tr>
+    <tr><td>GET</td><td>/tarefas/:id</td><td>Busca uma</td></tr>
+    <tr><td>PATCH</td><td>/tarefas/:id</td><td>Atualiza</td></tr>
+    <tr><td>DELETE</td><td>/tarefas/:id</td><td>Remove</td></tr>
+  </table>
+  <p class="muted">Dica: <code>npx prisma studio</code> abre uma interface visual para ver os dados da tabela.</p>
+</section>
+
+<section>
+  <h2>Desafio 2 — Filtrar tarefas por situação</h2>
+  <p>Rota: <code>GET /tarefas?concluida=true</code> (ou <code>false</code>). Sem o parâmetro, lista todas.</p>
+  <p class="arquivo">src/tarefas/tarefas.controller.ts</p>
+<pre><code>@Get()
+listar(
+  @Query('concluida', new ParseBoolPipe({ optional: true }))
+  concluida?: boolean,
+) {
+  return this.tarefasService.listar(concluida);
+}</code></pre>
+  <p class="arquivo">src/tarefas/tarefas.service.ts</p>
+<pre><code>listar(concluida?: boolean) {
+  return this.prisma.tarefa.findMany({
+    where: concluida === undefined ? {} : { concluida },
+    orderBy: { id: 'asc' },
+  });
+}</code></pre>
+  <p class="muted"><code>ParseBoolPipe</code> converte o texto <code>"true"</code> da URL em booleano e recusa valores inválidos (400).</p>
+</section>
+
+<section>
+  <h2>Desafio 3 — Validar o título com class-validator</h2>
+  <pre><code>npm install class-validator class-transformer</code></pre>
+  <p class="arquivo">src/main.ts</p>
+<pre><code>app.useGlobalPipes(new ValidationPipe({ whitelist: true }));</code></pre>
+  <p class="arquivo">src/tarefas/dto/criar-tarefa.dto.ts</p>
+<pre><code>import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+
+export class CriarTarefaDto {
+  @IsString({ message: 'O título deve ser um texto' })
+  @IsNotEmpty({ message: 'O título é obrigatório' })
+  @MaxLength(191, { message: 'O título deve ter no máximo 191 caracteres' })
+  titulo: string;
+}</code></pre>
+  <p class="muted"><code>whitelist: true</code> descarta campos que não estão no DTO.</p>
+</section>
+
+<section>
+  <h2>Comparando: class-validator × Zod</h2>
+  <table>
+    <tr><th></th><th>class-validator</th><th>Zod</th></tr>
+    <tr><td>Estilo</td><td>Classe + decorators</td><td>Schema (objeto)</td></tr>
+    <tr><td>Tipo TypeScript</td><td>Escrito à mão na classe</td><td>Gerado: <code>z.infer</code></td></tr>
+    <tr><td>Integração com Nest</td><td>Nativa (<code>ValidationPipe</code>)</td><td>Pipe próprio (poucas linhas)</td></tr>
+    <tr><td>Reuso no front-end</td><td>Difícil</td><td>Fácil (mesmo schema)</td></tr>
+  </table>
+  <p class="arquivo">Zod — schema + tipo</p>
+<pre><code>import { z } from 'zod';
+
+export const criarTarefaSchema = z.object({
+  titulo: z.string().min(1, 'O título é obrigatório').max(191),
+});
+
+export type CriarTarefaDto = z.infer&lt;typeof criarTarefaSchema&gt;;</code></pre>
+  <p class="arquivo">Zod — pipe e uso no controller</p>
+<pre><code>@Injectable()
+export class ZodPipe implements PipeTransform {
+  constructor(private schema: ZodType) {}
+  transform(value: unknown) {
+    const r = this.schema.safeParse(value);
+    if (!r.success) throw new BadRequestException(r.error.issues);
+    return r.data;
+  }
+}
+
+@Post()
+criar(@Body(new ZodPipe(criarTarefaSchema)) dto: CriarTarefaDto) { ... }</code></pre>
+  <p class="muted">Neste curso usamos class-validator por ser o padrão do Nest; o Zod é muito visto no mercado.</p>
+</section>
+
+<section>
+  <h2>Testando os desafios</h2>
+<pre><code># filtrar
+curl "localhost:3000/tarefas?concluida=true"
+curl "localhost:3000/tarefas?concluida=false"
+
+# título vazio → 400
+curl -X POST localhost:3000/tarefas \
+  -H 'Content-Type: application/json' -d '{"titulo":""}'
+# {"message":["O título é obrigatório"],"error":"Bad Request","statusCode":400}</code></pre>
+</section>
+
+<section>
+  <h2>Resumo e desafios</h2>
+  <ol>
+    <li>Criamos o projeto com a CLI do Nest</li>
+    <li>Subimos o MySQL com Docker</li>
+    <li>Configuramos o Prisma e definimos o <code>model</code></li>
+    <li>Criamos a tabela com <code>migrate dev</code></li>
+    <li>Montamos Service + Controller e testamos o CRUD</li>
+  </ol>
+  <p><strong>Desafios:</strong></p>
+  <ul>
+    <li>Adicionar o campo <code>descricao</code> (opcional) e gerar nova migração</li>
+    <li>✅ Filtrar com <code>GET /tarefas?concluida=true</code></li>
+    <li>✅ Validar o <code>titulo</code> com <code>class-validator</code></li>
+  </ul>
+</section>
+
+<nav>
+  <button id="ant">← Anterior</button>
+  <span id="contador"></span>
+  <button id="prox">Próximo →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('section');
+  let atual = Math.min(Number(location.hash.slice(1)) || 0, slides.length - 1);
+  function mostrar(i) {
+    atual = Math.max(0, Math.min(i, slides.length - 1));
+    slides.forEach((s, n) => s.classList.toggle('ativo', n === atual));
+    document.getElementById('contador').textContent = (atual + 1) + ' / ' + slides.length;
+    location.hash = atual;
+    window.scrollTo(0, 0);
+  }
+  document.getElementById('ant').onclick = () => mostrar(atual - 1);
+  document.getElementById('prox').onclick = () => mostrar(atual + 1);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') mostrar(atual + 1);
+    if (e.key === 'ArrowLeft') mostrar(atual - 1);
+  });
+  mostrar(atual);
+</script>
+</body>
+</html>
