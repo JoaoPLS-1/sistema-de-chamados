@@ -1,0 +1,10 @@
+# Credenciais e configuracoes locais
+.env
+.env.*
+!.env.example
+
+# Artefatos gerados
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
