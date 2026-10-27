@@ -11,3 +11,10 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
+model Tarefa {
+  id        Int      @id @default(autoincrement())
+  titulo    String
+  concluida Boolean  @default(false)
+  criadaEm  DateTime @default(now())
+}

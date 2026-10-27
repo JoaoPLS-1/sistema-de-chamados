@@ -63,10 +63,33 @@ no arquivo local `orm-basico/.env` e carregada por `orm-basico/prisma.config.ts`
 O datasource em `orm-basico/prisma/schema.prisma` usa o provider `mysql`.
 O comando `node node_modules/prisma/build/index.js validate`, executado dentro
 de `orm-basico/`, confirmou que a configuracao e o schema sao validos.
-A API ainda nao abre conexoes: a integracao do Prisma com o NestJS e a definicao
-do modelo e das migracoes pertencem aos proximos passos do roteiro.
+Os passos 5 e 6 tambem foram concluidos: modelo `Tarefa` definido, migracao
+inicial aplicada ao MySQL e Prisma Client gerado em `orm-basico/src/generated/prisma`.
+A integracao do Prisma com o NestJS pertence aos proximos passos do roteiro.
 Para `prisma migrate dev`, configure um shadow database separado e as permissoes
 necessarias, sem conceder privilegios globais ao usuario da API.
 
 A infraestrutura, os backups e a disponibilidade passam a ser responsabilidade
 do servidor MySQL existente. Nenhuma instalacao ou container e necessario.
+
+## Passo 6: criar a tabela Tarefa
+
+O usuario local nao tem permissao para criar o banco temporario (shadow database)
+exigido por `migrate dev` (erro P3014). Como o banco estava vazio, a migracao
+inicial foi gerada com `migrate diff --from-empty --to-schema prisma/schema.prisma
+--script --output prisma/migrations/20261027222259_criar_tarefas/migration.sql`
+e aplicada com `migrate deploy`, sem ampliar as permissoes do usuario.
+
+Para aplicar a migracao versionada em outro banco vazio e gerar o client,
+execute dentro de `orm-basico/`:
+
+```powershell
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js generate
+```
+
+A tabela `Tarefa` contem `id`, `titulo`, `concluida` e `criadaEm`.
+Validacao: `migrate status` confirmou que o banco esta atualizado e
+`migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`
+nao encontrou diferencas entre o banco e o schema.
+O uso de `--from-empty` acima se aplica apenas a esta migracao inicial.
