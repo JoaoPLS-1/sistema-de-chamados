@@ -110,3 +110,20 @@ O CRUD foi testado por HTTP com persistencia no MySQL:
 - A consulta apos a remocao retornou status 404.
 
 Foi usado o ID retornado na criacao. A tarefa de teste foi removida ao final.
+
+## Comparando: class-validator x Zod
+
+O exemplo do index esta implementado no POST /tarefas: o schema
+`orm-basico/src/tarefas/dto/criar-tarefa.schema.ts` define as regras e o tipo
+`CriarTarefaDto` e inferido com `z.infer`. O `ZodPipe` executa `safeParse`,
+retorna os dados tratados e responde 400 com os detalhes de `error.issues`
+quando o corpo e invalido. O schema descarta campos desconhecidos.
+
+O PATCH /tarefas/:id continua usando o DTO de classe com decorators e o
+ValidationPipe global com whitelist. O DTO de criacao com class-validator
+permanece em `criar-tarefa.dto.ts` como referencia da abordagem anterior.
+
+Ambas as abordagens validam titulo textual, nao vazio e com ate 191 caracteres.
+No POST, os erros agora incluem objetos com `path`, `code` e `message`;
+no PATCH, o ValidationPipe retorna uma lista de mensagens. O filtro por
+situacao e o restante do CRUD continuam funcionando.

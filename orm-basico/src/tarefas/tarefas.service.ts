@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AtualizarTarefaDto } from './dto/atualizar-tarefa.dto.js';
-import { CriarTarefaDto } from './dto/criar-tarefa.dto.js';
+import type { CriarTarefaDto } from './dto/criar-tarefa.schema.js';
 
 @Injectable()
 export class TarefasService {

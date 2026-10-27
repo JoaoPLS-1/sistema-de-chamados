@@ -140,7 +140,14 @@ describe('Tarefas (e2e com MySQL)', () => {
         .send({ titulo })
         .expect(400);
       if (titulo === '') {
-        expect(resposta.body.message).toContain('O título é obrigatório');
+        expect(resposta.body.message).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: ['titulo'],
+              message: 'O título é obrigatório',
+            }),
+          ]),
+        );
       }
     },
   );

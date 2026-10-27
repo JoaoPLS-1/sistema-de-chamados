@@ -11,7 +11,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { AtualizarTarefaDto } from './dto/atualizar-tarefa.dto.js';
-import { CriarTarefaDto } from './dto/criar-tarefa.dto.js';
+import { ZodPipe } from '../common/pipes/zod.pipe.js';
+import { criarTarefaSchema } from './dto/criar-tarefa.schema.js';
+import type { CriarTarefaDto } from './dto/criar-tarefa.schema.js';
 import { TarefasService } from './tarefas.service.js';
 
 @Controller('tarefas')
@@ -19,7 +21,7 @@ export class TarefasController {
   constructor(private readonly tarefasService: TarefasService) {}
 
   @Post()
-  criar(@Body() dto: CriarTarefaDto) {
+  criar(@Body(new ZodPipe(criarTarefaSchema)) dto: CriarTarefaDto) {
     return this.tarefasService.criar(dto);
   }
 
