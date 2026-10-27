@@ -127,3 +127,17 @@ Ambas as abordagens validam titulo textual, nao vazio e com ate 191 caracteres.
 No POST, os erros agora incluem objetos com `path`, `code` e `message`;
 no PATCH, o ValidationPipe retorna uma lista de mensagens. O filtro por
 situacao e o restante do CRUD continuam funcionando.
+
+## Testando os desafios
+
+Testes executados em 27/10/2026 na API local em `http://localhost:3000`,
+com duas tarefas temporarias no MySQL: uma pendente e outra concluida.
+
+- `GET /tarefas?concluida=true`: status 200, somente tarefas concluidas.
+- `GET /tarefas?concluida=false`: status 200, somente tarefas pendentes.
+- Cada filtro incluiu a tarefa de teste correspondente e excluiu a de situacao oposta.
+- `POST /tarefas` com `{"titulo":""}`: status 400 e mensagem de titulo obrigatorio.
+
+Como o POST usa Zod, a mensagem vem em `message[].message`, acompanhada
+por `path: ["titulo"]` e `code: "too_small"`, conforme o exemplo comparativo.
+As duas tarefas temporarias foram removidas ao final dos testes.
