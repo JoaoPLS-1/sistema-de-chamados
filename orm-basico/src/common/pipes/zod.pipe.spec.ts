@@ -16,6 +16,19 @@ describe('ZodPipe', () => {
     ).toEqual({ titulo: 'Estudar Zod' });
   });
 
+  it('preserva descricao opcional e aceita null para remove-la', () => {
+    const pipe = new ZodPipe(criarTarefaSchema);
+    for (const descricao of ['Detalhes', '', null]) {
+      expect(pipe.transform({ titulo: 'Estudar Zod', descricao })).toEqual({
+        titulo: 'Estudar Zod',
+        descricao,
+      });
+    }
+    expect(() =>
+      pipe.transform({ titulo: 'Estudar Zod', descricao: 123 }),
+    ).toThrow(BadRequestException);
+  });
+
   it('responde com erro 400 e detalhes do campo invalido', () => {
     const pipe = new ZodPipe(criarTarefaSchema);
     let erro: unknown;

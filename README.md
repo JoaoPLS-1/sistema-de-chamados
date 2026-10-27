@@ -113,20 +113,17 @@ Foi usado o ID retornado na criacao. A tarefa de teste foi removida ao final.
 
 ## Comparando: class-validator x Zod
 
-O exemplo do index esta implementado no POST /tarefas: o schema
-`orm-basico/src/tarefas/dto/criar-tarefa.schema.ts` define as regras e o tipo
-`CriarTarefaDto` e inferido com `z.infer`. O `ZodPipe` executa `safeParse`,
-retorna os dados tratados e responde 400 com os detalhes de `error.issues`
-quando o corpo e invalido. O schema descarta campos desconhecidos.
+A API usa class-validator no POST e no PATCH, conforme o resumo final do index,
+com ValidationPipe global e whitelist. O titulo deve ser texto nao vazio com
+ate 191 caracteres; os erros retornam status 400 e uma lista de mensagens.
 
-O PATCH /tarefas/:id continua usando o DTO de classe com decorators e o
-ValidationPipe global com whitelist. O DTO de criacao com class-validator
-permanece em `criar-tarefa.dto.ts` como referencia da abordagem anterior.
-
-Ambas as abordagens validam titulo textual, nao vazio e com ate 191 caracteres.
-No POST, os erros agora incluem objetos com `path`, `code` e `message`;
-no PATCH, o ValidationPipe retorna uma lista de mensagens. O filtro por
-situacao e o restante do CRUD continuam funcionando.
+O exemplo alternativo com Zod permanece em
+`orm-basico/src/tarefas/dto/criar-tarefa.schema.ts` e
+`orm-basico/src/common/pipes/zod.pipe.ts`, com testes unitarios. O tipo e
+inferido por `z.infer`, e o pipe usa `safeParse` e retorna os detalhes de
+`error.issues` em caso de erro. Para experimentar essa alternativa no POST,
+importe o schema e seu tipo (com `import type`) no controller e use
+`@Body(new ZodPipe(criarTarefaSchema))`. Os dois validadores descartam campos extras.
 
 ## Testando os desafios
 
@@ -138,6 +135,38 @@ com duas tarefas temporarias no MySQL: uma pendente e outra concluida.
 - Cada filtro incluiu a tarefa de teste correspondente e excluiu a de situacao oposta.
 - `POST /tarefas` com `{"titulo":""}`: status 400 e mensagem de titulo obrigatorio.
 
-Como o POST usa Zod, a mensagem vem em `message[].message`, acompanhada
-por `path: ["titulo"]` e `code: "too_small"`, conforme o exemplo comparativo.
+Na versao final, o POST usa class-validator: titulo vazio retorna
+`message: ["O título é obrigatório"]`.
+O exemplo alternativo Zod e validado separadamente nos testes unitarios.
 As duas tarefas temporarias foram removidas ao final dos testes.
+
+## Desafio 1: descricao opcional
+
+O modelo Tarefa inclui `descricao String? @db.Text`. POST e PATCH aceitam
+`descricao` como texto ou null. Sem descricao na criacao, o banco armazena null.
+No PATCH, omitir o campo preserva o valor existente; enviar null limpa o campo.
+Numeros, booleanos, listas e objetos retornam 400. GET inclui descricao nos dados.
+
+A migracao `20261027231000_adicionar_descricao` adiciona apenas a coluna
+`descricao TEXT NULL` e foi aplicada ao MySQL local, preservando as tarefas.
+Foi gerada com `migrate diff --from-config-datasource --to-schema prisma/schema.prisma`
+e aplicada com `migrate deploy`, evitando a exigencia de shadow database do
+`migrate dev`. O Prisma Client foi atualizado e o diff final nao apontou diferencas.
+
+Para atualizar outro ambiente, execute dentro de `orm-basico/`:
+
+```powershell
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js generate
+npm run build
+```
+
+Exemplo de corpo para POST /tarefas:
+
+```json
+{"titulo":"Estudar NestJS","descricao":"Revisar os desafios da aula"}
+```
+
+Validacao final: build e lint aprovados, 10 testes unitarios e 18 de integracao
+aprovados com MySQL. A API na porta 3000 confirmou criacao e consulta com
+descricao e erro 400 para titulo vazio; a tarefa temporaria foi removida.

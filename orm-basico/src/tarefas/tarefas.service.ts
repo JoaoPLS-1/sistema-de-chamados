@@ -1,14 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AtualizarTarefaDto } from './dto/atualizar-tarefa.dto.js';
-import type { CriarTarefaDto } from './dto/criar-tarefa.schema.js';
+import { CriarTarefaDto } from './dto/criar-tarefa.dto.js';
 
 @Injectable()
 export class TarefasService {
   constructor(private readonly prisma: PrismaService) {}
 
   criar(dto: CriarTarefaDto) {
-    return this.prisma.tarefa.create({ data: { titulo: dto.titulo } });
+    return this.prisma.tarefa.create({
+      data: { titulo: dto.titulo, descricao: dto.descricao },
+    });
   }
 
   listar(concluida?: boolean) {

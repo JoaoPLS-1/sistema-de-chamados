@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   ValidateIf,
@@ -16,4 +17,8 @@ export class AtualizarTarefaDto {
   @ValidateIf((_obj, value: unknown) => value !== undefined)
   @IsBoolean({ message: 'A situação deve ser um booleano' })
   concluida?: boolean;
+
+  @IsOptional()
+  @IsString({ message: 'A descrição deve ser um texto' })
+  descricao?: string | null;
 }

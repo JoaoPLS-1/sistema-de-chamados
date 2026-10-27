@@ -40,7 +40,11 @@ describe('Tarefas (e2e com MySQL)', () => {
       .expect(201);
     tarefaId = criada.body.id;
     expect(tarefaId).toEqual(expect.any(Number));
-    expect(criada.body).toMatchObject({ titulo, concluida: false });
+    expect(criada.body).toMatchObject({
+      titulo,
+      concluida: false,
+      descricao: null,
+    });
     expect(Number.isNaN(Date.parse(criada.body.criadaEm))).toBe(false);
 
     await request(http)
@@ -140,14 +144,7 @@ describe('Tarefas (e2e com MySQL)', () => {
         .send({ titulo })
         .expect(400);
       if (titulo === '') {
-        expect(resposta.body.message).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              path: ['titulo'],
-              message: 'O título é obrigatório',
-            }),
-          ]),
-        );
+        expect(resposta.body.message).toContain('O título é obrigatório');
       }
     },
   );
@@ -160,7 +157,11 @@ describe('Tarefas (e2e com MySQL)', () => {
       .send({ titulo, id: -1, concluida: true, extra: 'ignorar' })
       .expect(201);
     tarefaId = criada.body.id;
-    expect(criada.body).toMatchObject({ titulo, concluida: false });
+    expect(criada.body).toMatchObject({
+      titulo,
+      concluida: false,
+      descricao: null,
+    });
     expect(tarefaId).toBeGreaterThan(0);
     expect(criada.body).not.toHaveProperty('extra');
 
@@ -198,6 +199,70 @@ describe('Tarefas (e2e com MySQL)', () => {
       .get('/tarefas/' + tarefaId)
       .expect(200)
       .expect(renomeada.body);
+  });
+
+  it.each(['Descricao detalhada '.repeat(30), '', null])(
+    'persiste descricao opcional e permite remove-la: %j',
+    async (descricao) => {
+      const http = app.getHttpServer();
+      const criada = await request(http)
+        .post('/tarefas')
+        .send({ titulo: 'Teste de descricao', descricao })
+        .expect(201);
+      tarefaId = criada.body.id;
+      expect(criada.body.descricao).toBe(descricao);
+      await request(http)
+        .get('/tarefas/' + tarefaId)
+        .expect(200)
+        .expect(criada.body);
+      const lista = await request(http).get('/tarefas').expect(200);
+      expect(lista.body).toContainEqual(criada.body);
+      const alterada = await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ descricao: 'Nova descricao' })
+        .expect(200);
+      expect(alterada.body).toMatchObject({
+        titulo: 'Teste de descricao',
+        descricao: 'Nova descricao',
+      });
+      const preservada = await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ concluida: true })
+        .expect(200);
+      expect(preservada.body.descricao).toBe('Nova descricao');
+      const limpa = await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ descricao: null })
+        .expect(200);
+      expect(limpa.body.descricao).toBeNull();
+      await request(http)
+        .get('/tarefas/' + tarefaId)
+        .expect(200)
+        .expect(limpa.body);
+    },
+  );
+
+  it('rejeita descricao com tipo invalido sem alterar dados existentes', async () => {
+    const http = app.getHttpServer();
+    const criada = await request(http)
+      .post('/tarefas')
+      .send({ titulo: 'Descricao valida', descricao: 'Preservar' })
+      .expect(201);
+    tarefaId = criada.body.id;
+    for (const descricao of [123, true, [], {}]) {
+      await request(http)
+        .post('/tarefas')
+        .send({ titulo: 'Invalida', descricao })
+        .expect(400);
+      await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ descricao })
+        .expect(400);
+    }
+    await request(http)
+      .get('/tarefas/' + tarefaId)
+      .expect(200)
+      .expect(criada.body);
   });
 
   it('retorna 400 para IDs que nao sao numeros inteiros', async () => {
