@@ -11,8 +11,11 @@ export class TarefasService {
     return this.prisma.tarefa.create({ data: { titulo: dto.titulo } });
   }
 
-  listar() {
-    return this.prisma.tarefa.findMany({ orderBy: { id: 'asc' } });
+  listar(concluida?: boolean) {
+    return this.prisma.tarefa.findMany({
+      where: concluida === undefined ? {} : { concluida },
+      orderBy: { id: 'asc' },
+    });
   }
 
   async buscar(id: number) {

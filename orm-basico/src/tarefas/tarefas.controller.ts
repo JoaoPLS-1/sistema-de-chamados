@@ -4,9 +4,11 @@ import {
   Delete,
   Get,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { AtualizarTarefaDto } from './dto/atualizar-tarefa.dto.js';
 import { CriarTarefaDto } from './dto/criar-tarefa.dto.js';
@@ -22,8 +24,11 @@ export class TarefasController {
   }
 
   @Get()
-  listar() {
-    return this.tarefasService.listar();
+  listar(
+    @Query('concluida', new ParseBoolPipe({ optional: true }))
+    concluida?: boolean,
+  ) {
+    return this.tarefasService.listar(concluida);
   }
 
   @Get(':id')

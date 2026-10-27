@@ -87,6 +87,50 @@ describe('Tarefas (e2e com MySQL)', () => {
     await request(http).delete(`/tarefas/${tarefaId}`).expect(404);
   });
 
+  it('filtra tarefas pendentes e concluidas e lista todas sem filtro', async () => {
+    const http = app.getHttpServer();
+    const criada = await request(http)
+      .post('/tarefas')
+      .send({ titulo: 'Teste de filtro' })
+      .expect(201);
+    tarefaId = criada.body.id;
+    for (const concluida of [false, true]) {
+      await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ concluida })
+        .expect(200);
+      const filtrada = await request(http)
+        .get('/tarefas?concluida=' + concluida)
+        .expect(200);
+      expect(filtrada.body.some((t: { id: number }) => t.id === tarefaId)).toBe(
+        true,
+      );
+      expect(
+        filtrada.body.every(
+          (t: { concluida: boolean }) => t.concluida === concluida,
+        ),
+      ).toBe(true);
+      const oposta = await request(http)
+        .get('/tarefas?concluida=' + !concluida)
+        .expect(200);
+      expect(oposta.body.some((t: { id: number }) => t.id === tarefaId)).toBe(
+        false,
+      );
+      const todas = await request(http).get('/tarefas').expect(200);
+      expect(todas.body.some((t: { id: number }) => t.id === tarefaId)).toBe(
+        true,
+      );
+    }
+  });
+
+  it('rejeita filtros booleanos invalidos', async () => {
+    for (const valor of ['sim', '1', 'TRUE', '']) {
+      await request(app.getHttpServer())
+        .get('/tarefas?concluida=' + valor)
+        .expect(400);
+    }
+  });
+
   it('retorna 400 para IDs que nao sao numeros inteiros', async () => {
     const http = app.getHttpServer();
     for (const id of ['abc', '1.5']) {
