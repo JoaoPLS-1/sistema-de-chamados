@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -14,6 +14,7 @@ describe('Tarefas (e2e com MySQL)', () => {
       imports: [AppModule],
     }).compile();
     app = module.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
   });
 
@@ -129,6 +130,67 @@ describe('Tarefas (e2e com MySQL)', () => {
         .get('/tarefas?concluida=' + valor)
         .expect(400);
     }
+  });
+
+  it.each([undefined, null, '', 123, true, [], {}, 'a'.repeat(192)])(
+    'rejeita titulo invalido na criacao: %j',
+    async (titulo) => {
+      const resposta = await request(app.getHttpServer())
+        .post('/tarefas')
+        .send({ titulo })
+        .expect(400);
+      if (titulo === '') {
+        expect(resposta.body.message).toContain('O título é obrigatório');
+      }
+    },
+  );
+
+  it('aceita 191 caracteres, descarta campos extras e valida atualizacoes parciais', async () => {
+    const http = app.getHttpServer();
+    const titulo = 'a'.repeat(191);
+    const criada = await request(http)
+      .post('/tarefas')
+      .send({ titulo, id: -1, concluida: true, extra: 'ignorar' })
+      .expect(201);
+    tarefaId = criada.body.id;
+    expect(criada.body).toMatchObject({ titulo, concluida: false });
+    expect(tarefaId).toBeGreaterThan(0);
+    expect(criada.body).not.toHaveProperty('extra');
+
+    for (const tituloInvalido of [null, '', 123, 'a'.repeat(192)]) {
+      await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ titulo: tituloInvalido })
+        .expect(400);
+    }
+    for (const concluida of [null, 'true', 1]) {
+      await request(http)
+        .patch('/tarefas/' + tarefaId)
+        .send({ concluida })
+        .expect(400);
+    }
+    const atualizada = await request(http)
+      .patch('/tarefas/' + tarefaId)
+      .send({ concluida: true, id: -1, extra: 'ignorar' })
+      .expect(200);
+    expect(atualizada.body).toMatchObject({
+      id: tarefaId,
+      titulo,
+      concluida: true,
+    });
+    expect(atualizada.body).not.toHaveProperty('extra');
+    const renomeada = await request(http)
+      .patch('/tarefas/' + tarefaId)
+      .send({ titulo: 'Titulo atualizado' })
+      .expect(200);
+    expect(renomeada.body).toMatchObject({
+      titulo: 'Titulo atualizado',
+      concluida: true,
+    });
+    await request(http)
+      .get('/tarefas/' + tarefaId)
+      .expect(200)
+      .expect(renomeada.body);
   });
 
   it('retorna 400 para IDs que nao sao numeros inteiros', async () => {
