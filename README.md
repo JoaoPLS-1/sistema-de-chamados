@@ -93,3 +93,20 @@ Validacao: `migrate status` confirmou que o banco esta atualizado e
 `migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`
 nao encontrou diferencas entre o banco e o schema.
 O uso de `--from-empty` acima se aplica apenas a esta migracao inicial.
+
+## Passo 14: rodar e testar
+
+Validacao realizada em 27/10/2026 com `npm run start:dev`, executado dentro
+de `orm-basico/`. A API iniciou em `http://localhost:3000` sem erros de compilacao.
+
+O CRUD foi testado por HTTP com persistencia no MySQL:
+
+- `POST /tarefas`: criou a tarefa `Estudar NestJS`, com status 201 e `concluida: false`.
+- `GET /tarefas`: retornou status 200 e incluiu a tarefa criada.
+- `GET /tarefas/:id`: retornou a tarefa com status 200.
+- `PATCH /tarefas/:id`: marcou `concluida: true`, com status 200.
+- Uma nova consulta confirmou que a atualizacao foi persistida.
+- `DELETE /tarefas/:id`: removeu a tarefa de teste, com status 200.
+- A consulta apos a remocao retornou status 404.
+
+Foi usado o ID retornado na criacao. A tarefa de teste foi removida ao final.
