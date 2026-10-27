@@ -14,7 +14,7 @@ A aplicacao utilizara diretamente um servidor MySQL existente.
 
 Nesta maquina, o servico `MySQL84` esta em execucao e a porta 3306 esta aberta.
 A referencia local e `127.0.0.1:3306`, banco `tarefas`, usuario `tarefas_app`.
-A existencia do banco e usuario ainda precisa ser confirmada com autenticacao.
+A conexao autenticada com o banco tarefas e o usuario tarefas_app foi validada em 27/10/2026.
 
 1. Conecte ao servidor pelo MySQL Workbench ou cliente mysql com suas credenciais.
 2. Se banco e usuario ainda nao existirem, revise `infra/mysql/setup.sql`,
@@ -26,8 +26,8 @@ A existencia do banco e usuario ainda precisa ser confirmada com autenticacao.
 Copy-Item orm-basico/.env.example orm-basico/.env
 ```
 
-O `.env` local ja foi preparado com valores de exemplo. Edite-o com as
-credenciais reais, preservando-o nas proximas configuracoes:
+O `.env` local ja contem as credenciais reais e deve ser preservado.
+O exemplo abaixo serve apenas de referencia, sem expor a senha local:
 
 ```dotenv
 DATABASE_URL="mysql://tarefas_app:SUA_SENHA@127.0.0.1:3306/tarefas"
@@ -53,14 +53,18 @@ Ou use o cliente MySQL (a senha sera solicitada sem ficar no comando):
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' --protocol=TCP -h 127.0.0.1 -P 3306 -u tarefas_app -p tarefas
 ```
 
-O servico estar ativo e a porta aberta nao confirmam a senha nem as permissoes.
-A conexao autenticada ainda nao foi validada.
+Validacao realizada em 27/10/2026: autenticacao como `tarefas_app@localhost`,
+banco `tarefas`, MySQL `8.4.0` e `SELECT 1` executado com sucesso.
 
 ## Proximos passos do roteiro
 
-O Prisma ainda nao foi instalado e a API ainda nao abre conexoes com o banco.
-A `DATABASE_URL` esta preparada para os passos 3 e 4. Ao integrar o Prisma,
-carregue `orm-basico/.env` e mantenha o usuario dedicado para a aplicacao.
+Os passos 3 e 4 estao configurados: Prisma instalado, `DATABASE_URL` definida
+no arquivo local `orm-basico/.env` e carregada por `orm-basico/prisma.config.ts`.
+O datasource em `orm-basico/prisma/schema.prisma` usa o provider `mysql`.
+O comando `node node_modules/prisma/build/index.js validate`, executado dentro
+de `orm-basico/`, confirmou que a configuracao e o schema sao validos.
+A API ainda nao abre conexoes: a integracao do Prisma com o NestJS e a definicao
+do modelo e das migracoes pertencem aos proximos passos do roteiro.
 Para `prisma migrate dev`, configure um shadow database separado e as permissoes
 necessarias, sem conceder privilegios globais ao usuario da API.
 
