@@ -1,2 +1,8 @@
 node_modules/
-/src/generated/prisma
+/src/generated/prisma/
+
+# Skills e atalhos instalados nas ferramentas locais de IA
+/.agents/skills/
+/.claude/skills/
+/.windsurf/skills/
+/skills-lock.json

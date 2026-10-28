@@ -1,0 +1,362 @@
+# Histórico da implementação
+
+Este documento preserva o README anterior à reorganização. Relatos de validação,
+configurações de máquina e pendências abaixo correspondem às respectivas etapas.
+Para preparar e executar a versão atual, consulte o [README principal](../README.md).
+
+# Sistema de chamados
+
+API NestJS em `orm-basico/` e roteiro de aula em `index.html`.
+A aplicacao utilizara diretamente um servidor MySQL existente.
+
+Estado atual: os quatro modulos de regras de negocio e a autenticacao estao implementados.
+Consulte [autenticacao e primeiro acesso](autenticacao.md) e
+[configuracao do MySQL no Windows](mysql-windows.md). Todas as rotas agora exigem
+Bearer, exceto o login. Os exemplos e resultados de etapas anteriores abaixo sao historicos;
+a identidade do solicitante/autor agora vem da sessao, e nao do corpo HTTP.
+
+## Estrutura
+
+- `orm-basico/src/`: codigo da API.
+- `orm-basico/.env.example`: modelo versionado da conexao.
+- `orm-basico/.env`: configuracao local, ignorada pelo Git.
+- `infra/mysql/setup.sql`: preparacao opcional do banco e usuario, sem Docker.
+
+## Passo 2: preparar o MySQL existente
+
+Nesta maquina, o servico `MySQL84` esta em execucao e a porta 3306 esta aberta.
+A referencia local e `127.0.0.1:3306`, banco `tarefas`, usuario `tarefas_app`.
+A conexao autenticada com o banco tarefas e o usuario tarefas_app foi validada em 27/10/2026.
+
+1. Conecte ao servidor pelo MySQL Workbench ou cliente mysql com suas credenciais.
+2. Se banco e usuario ainda nao existirem, revise `infra/mysql/setup.sql`,
+   substitua a senha e execute com um administrador. Se ja existirem, use os
+   dados atuais; nao e necessario executar o SQL.
+3. Caso ainda nao exista, copie o modelo para o arquivo local:
+
+```powershell
+Copy-Item orm-basico/.env.example orm-basico/.env
+```
+
+O `.env` local ja contem as credenciais reais e deve ser preservado.
+O exemplo abaixo serve apenas de referencia, sem expor a senha local:
+
+```dotenv
+DATABASE_URL="mysql://tarefas_app:SUA_SENHA@127.0.0.1:3306/tarefas"
+```
+
+Para outro servidor, altere host, porta, banco e usuario. Codifique caracteres
+especiais da senha para URL. Nao publique o `.env` nem senhas no SQL versionado.
+O usuario da API deve ter acesso somente ao banco da aplicacao.
+
+## Validar o acesso
+
+No Workbench, conecte com o usuario da aplicacao e execute:
+
+```sql
+SELECT CURRENT_USER(), VERSION();
+USE tarefas;
+SELECT 1;
+```
+
+Ou use o cliente MySQL (a senha sera solicitada sem ficar no comando):
+
+```powershell
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' --protocol=TCP -h 127.0.0.1 -P 3306 -u tarefas_app -p tarefas
+```
+
+Validacao realizada em 27/10/2026: autenticacao como `tarefas_app@localhost`,
+banco `tarefas`, MySQL `8.4.0` e `SELECT 1` executado com sucesso.
+
+## Proximos passos do roteiro
+
+Os passos 3 e 4 estao configurados: Prisma instalado, `DATABASE_URL` definida
+no arquivo local `orm-basico/.env` e carregada por `orm-basico/prisma.config.ts`.
+O datasource em `orm-basico/prisma/schema.prisma` usa o provider `mysql`.
+O comando `node node_modules/prisma/build/index.js validate`, executado dentro
+de `orm-basico/`, confirmou que a configuracao e o schema sao validos.
+Os passos 5 e 6 tambem foram concluidos: modelo `Tarefa` definido, migracao
+inicial aplicada ao MySQL e Prisma Client gerado em `orm-basico/src/generated/prisma`.
+A integracao do Prisma com o NestJS pertence aos proximos passos do roteiro.
+Para `prisma migrate dev`, configure um shadow database separado e as permissoes
+necessarias, sem conceder privilegios globais ao usuario da API.
+
+A infraestrutura, os backups e a disponibilidade passam a ser responsabilidade
+do servidor MySQL existente. Nenhuma instalacao ou container e necessario.
+
+## Passo 6: criar a tabela Tarefa
+
+O usuario local nao tem permissao para criar o banco temporario (shadow database)
+exigido por `migrate dev` (erro P3014). Como o banco estava vazio, a migracao
+inicial foi gerada com `migrate diff --from-empty --to-schema prisma/schema.prisma
+--script --output prisma/migrations/20261027222259_criar_tarefas/migration.sql`
+e aplicada com `migrate deploy`, sem ampliar as permissoes do usuario.
+
+Para aplicar a migracao versionada em outro banco vazio e gerar o client,
+execute dentro de `orm-basico/`:
+
+```powershell
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js generate
+```
+
+A tabela `Tarefa` contem `id`, `titulo`, `concluida` e `criadaEm`.
+Validacao: `migrate status` confirmou que o banco esta atualizado e
+`migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`
+nao encontrou diferencas entre o banco e o schema.
+O uso de `--from-empty` acima se aplica apenas a esta migracao inicial.
+
+## Passo 14: rodar e testar
+
+Validacao realizada em 27/10/2026 com `npm run start:dev`, executado dentro
+de `orm-basico/`. A API iniciou em `http://localhost:3000` sem erros de compilacao.
+
+O CRUD foi testado por HTTP com persistencia no MySQL:
+
+- `POST /tarefas`: criou a tarefa `Estudar NestJS`, com status 201 e `concluida: false`.
+- `GET /tarefas`: retornou status 200 e incluiu a tarefa criada.
+- `GET /tarefas/:id`: retornou a tarefa com status 200.
+- `PATCH /tarefas/:id`: marcou `concluida: true`, com status 200.
+- Uma nova consulta confirmou que a atualizacao foi persistida.
+- `DELETE /tarefas/:id`: removeu a tarefa de teste, com status 200.
+- A consulta apos a remocao retornou status 404.
+
+Foi usado o ID retornado na criacao. A tarefa de teste foi removida ao final.
+
+## Comparando: class-validator x Zod
+
+A API usa class-validator no POST e no PATCH, conforme o resumo final do index,
+com ValidationPipe global e whitelist. O titulo deve ser texto nao vazio com
+ate 191 caracteres; os erros retornam status 400 e uma lista de mensagens.
+
+O exemplo alternativo com Zod permanece em
+`orm-basico/src/tarefas/dto/criar-tarefa.schema.ts` e
+`orm-basico/src/common/pipes/zod.pipe.ts`, com testes unitarios. O tipo e
+inferido por `z.infer`, e o pipe usa `safeParse` e retorna os detalhes de
+`error.issues` em caso de erro. Para experimentar essa alternativa no POST,
+importe o schema e seu tipo (com `import type`) no controller e use
+`@Body(new ZodPipe(criarTarefaSchema))`. Os dois validadores descartam campos extras.
+
+## Testando os desafios
+
+Testes executados em 27/10/2026 na API local em `http://localhost:3000`,
+com duas tarefas temporarias no MySQL: uma pendente e outra concluida.
+
+- `GET /tarefas?concluida=true`: status 200, somente tarefas concluidas.
+- `GET /tarefas?concluida=false`: status 200, somente tarefas pendentes.
+- Cada filtro incluiu a tarefa de teste correspondente e excluiu a de situacao oposta.
+- `POST /tarefas` com `{"titulo":""}`: status 400 e mensagem de titulo obrigatorio.
+
+Na versao final, o POST usa class-validator: titulo vazio retorna
+`message: ["O título é obrigatório"]`.
+O exemplo alternativo Zod e validado separadamente nos testes unitarios.
+As duas tarefas temporarias foram removidas ao final dos testes.
+
+## Desafio 1: descricao opcional
+
+O modelo Tarefa inclui `descricao String? @db.Text`. POST e PATCH aceitam
+`descricao` como texto ou null. Sem descricao na criacao, o banco armazena null.
+No PATCH, omitir o campo preserva o valor existente; enviar null limpa o campo.
+Numeros, booleanos, listas e objetos retornam 400. GET inclui descricao nos dados.
+
+A migracao `20261027231000_adicionar_descricao` adiciona apenas a coluna
+`descricao TEXT NULL` e foi aplicada ao MySQL local, preservando as tarefas.
+Foi gerada com `migrate diff --from-config-datasource --to-schema prisma/schema.prisma`
+e aplicada com `migrate deploy`, evitando a exigencia de shadow database do
+`migrate dev`. O Prisma Client foi atualizado e o diff final nao apontou diferencas.
+
+Para atualizar outro ambiente, execute dentro de `orm-basico/`:
+
+```powershell
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js generate
+npm run build
+```
+
+Exemplo de corpo para POST /tarefas:
+
+```json
+{"titulo":"Estudar NestJS","descricao":"Revisar os desafios da aula"}
+```
+
+Validacao final: build e lint aprovados, 10 testes unitarios e 18 de integracao
+aprovados com MySQL. A API na porta 3000 confirmou criacao e consulta com
+descricao e erro 400 para titulo vazio; a tarefa temporaria foi removida.
+
+## Modulo de pessoas
+
+Primeiro modulo das regras de negocio de Sistema de Chamados.
+A migracao `20261027234000_criar_pessoas` cria a tabela Pessoa e foi aplicada
+no MySQL local. O modelo de tarefas da aula continua disponivel.
+
+| Metodo | Rota | Resultado |
+| --- | --- | --- |
+| POST | /pessoas | Cadastra uma pessoa (201) |
+| GET | /pessoas | Lista pessoas por ID, incluindo inativas (200) |
+| GET | /pessoas/:id | Consulta uma pessoa (200) |
+| PATCH | /pessoas/:id | Atualiza campos informados (200) |
+| DELETE | /pessoas/:id | Exclui pessoa sem historico de chamados (204) |
+
+Exemplo de cadastro:
+
+```json
+{"nome":"Ana Silva","email":"ana@example.com","tipo":"SOLICITANTE"}
+```
+
+- Nome obrigatorio, sem espacos nas pontas, com ate 191 caracteres.
+- E-mail obrigatorio e valido, armazenado em minusculas e sem espacos nas pontas,
+  com ate 254 caracteres. A restricao unica no MySQL protege inclusive contra
+  duplicidade em requisicoes simultaneas. Duplicidade retorna 409.
+- Tipo obrigatorio: `SOLICITANTE` ou `TECNICO`.
+- `ativa` e um booleano e assume true quando omitido no cadastro.
+  Para desativar, envie `{"ativa":false}` no PATCH; para reativar, envie true.
+- PATCH preserva campos omitidos. Null e tipos incorretos retornam 400.
+- Campos desconhecidos sao descartados. Pessoa inexistente retorna 404.
+- Respostas incluem id, nome, email, tipo, ativa, criadaEm e atualizadaEm.
+
+### Integracao com os proximos modulos
+
+PessoasService e exportado e oferece `buscarAtiva(id, tipo?)` para verificar
+existencia, situacao ativa e, quando necessario, perfil. Inatividade ou perfil
+incompativel retornam 409. Os futuros fluxos de abrir, designar e comentar
+precisam executar essas verificacoes na sua operacao de negocio.
+
+O marcador interno `temHistoricoChamados` protege a exclusao de quem ja esteve
+envolvido em chamados. Nao e recebido nem exposto pela API. DELETE verifica
+o marcador na propria operacao de exclusao e retorna 409 quando houver historico;
+a pessoa ainda pode ser desativada. Violacao de chave estrangeira tambem retorna 409.
+
+Ao implementar chamados e comentarios, sera necessario registrar o primeiro
+envolvimento com `temHistoricoChamados: true` na mesma transacao da abertura,
+designacao ou comentario e manter esse marcador mesmo apos trocar o responsavel.
+As relacoes com chamados ainda serao criadas nesses modulos; o teste atual simula
+o historico pelo Prisma para verificar a protecao de exclusao.
+
+Validacao: build e lint aprovados, 10 testes unitarios e 44 de integracao aprovados,
+incluindo CRUD de pessoas, normalizacao, perfis, ativacao/desativacao, validacao,
+unicidade concorrente e protecao do historico. Os testes removem apenas seus
+registros temporarios. O diff Prisma confirmou banco e schema sincronizados.
+
+## Modulo de tipos de problema
+
+Segundo modulo das regras de negocio, com rotas em `/tipos-problema`:
+
+| Metodo | Rota | Resultado |
+| --- | --- | --- |
+| POST | /tipos-problema | Cadastra tipo de problema (201) |
+| GET | /tipos-problema | Lista todos por ID, incluindo desativados (200) |
+| GET | /tipos-problema/:id | Consulta um tipo (200) |
+| PATCH | /tipos-problema/:id | Atualiza nome e/ou ativo (200) |
+| DELETE | /tipos-problema/:id | Exclui tipo sem historico (204) |
+
+```json
+{"nome":"Rede","ativo":true}
+```
+
+Nome obrigatorio, nao vazio, sem espacos nas pontas e com ate 191 caracteres.
+O nome e unico inclusive entre tipos desativados; a collation do banco local
+considera maiusculas e minusculas equivalentes. A restricao unica protege
+requisicoes simultaneas, retornando 409 quando houver duplicidade.
+
+Ativo assume true se omitido no cadastro. Envie `{"ativo":false}` no PATCH
+para desativar ou true para reativar. Campos omitidos sao preservados; null
+e tipos incorretos retornam 400. Registros inexistentes retornam 404.
+
+O marcador interno temHistoricoChamados nao e recebido nem exposto pela API.
+DELETE verifica esse marcador atomicamente e retorna 409 se o tipo ja foi
+usado. O futuro modulo de chamados deve marcar o primeiro uso na mesma
+transacao da abertura e verificar o tipo ativo. TiposProblemaService e
+exportado e oferece buscarAtivo para a integracao.
+
+A migracao `20261028002000_criar_tipos_problema` foi aplicada ao banco tarefas.
+O diff final nao apontou diferencas. Build, lint, 10 testes unitarios e 62 testes
+de integracao passaram, incluindo a regressao completa de pessoas e tarefas.
+
+As regras originais estao em [docs/regras-de-negocio.md](regras-de-negocio.md).
+O [acompanhamento das 21 regras](andamento-regras.md) registra o que foi
+implementado e o que ainda depende dos proximos modulos. O proximo e chamados.
+
+## Modulo de chamados
+
+| Metodo | Rota | Acao |
+| --- | --- | --- |
+| POST | /chamados | Abre chamado (201) |
+| GET | /chamados | Lista e filtra (200) |
+| GET | /chamados/:id | Consulta detalhes (200) |
+| PATCH | /chamados/:id | Edita titulo, descricao e prioridade (200) |
+| PATCH | /chamados/:id/tecnico | Designa ou troca tecnico (200) |
+| PATCH | /chamados/:id/situacao | Executa transicao permitida (200) |
+
+Exemplo de abertura (use IDs existentes de solicitante e tipo ativos):
+
+```json
+{"titulo":"Falha na rede","descricao":"Nao consigo acessar a rede interna","solicitanteId":1,"tipoProblemaId":1,"prioridade":"MEDIA"}
+```
+
+Chamados nascem ABERTO e sem tecnico. Titulo tem de 5 a 100 caracteres e descricao
+no minimo 10, apos trim. Prioridades: BAIXA, MEDIA (padrao), ALTA e CRITICA.
+Filtros combinaveis: situacao, prioridade, tipoProblemaId e tecnicoId.
+
+Designacao recebe `{"tecnicoId":2}` e inicia atendimento quando o chamado esta aberto.
+Mudanca de situacao recebe, por exemplo, `{"situacao":"RESOLVIDO"}`.
+O fluxo e ABERTO -> EM_ATENDIMENTO -> RESOLVIDO -> FECHADO, com reabertura de
+RESOLVIDO para EM_ATENDIMENTO e cancelamento de ABERTO ou EM_ATENDIMENTO.
+Chamados encerrados nao podem ser editados. Nao existe rota de exclusao de chamado.
+
+Transacoes com bloqueios protegem o limite de cinco atendimentos por tecnico,
+transicoes concorrentes, atividade/perfil e historico de pessoas e tipos.
+Tecnicos anteriores continuam protegidos contra exclusao apos troca de responsavel.
+ResolvidoEm preserva a ultima resolucao ao reabrir e e atualizado ao resolver novamente.
+Violacoes de regra retornam 409, dados invalidos 400 e registros inexistentes 404.
+
+Migracao `20261028010000_criar_chamados` aplicada em tarefas. Build, lint,
+10 testes unitarios e 141 de integracao aprovados. Comentarios, conversa no detalhe
+e identificacao/autenticacao do autor foram registrados como pendencias em
+[andamento das regras](andamento-regras.md).
+
+## Modulo de comentarios
+
+O proximo modulo foi implementado em `orm-basico/src/comentarios/`:
+
+- `POST /chamados/:chamadoId/comentarios`: registra comentario (201).
+- `GET /chamados/:id`: inclui `comentarios`, ordenados por `criadoEm` e `id`,
+  com o ID e nome do autor. A listagem geral de chamados nao carrega a conversa.
+
+```json
+{"corpo":"O problema continua ao tentar acessar o sistema."}
+```
+
+O autor deve estar ativo e ser o solicitante ou o tecnico atualmente responsavel.
+O corpo e obrigatorio, textual e nao vazio apos remover espacos das pontas.
+Chamados ABERTO, EM_ATENDIMENTO e RESOLVIDO aceitam comentarios; FECHADO e
+CANCELADO retornam 409. Pessoa ou chamado inexistente retorna 404 e dados
+invalidos retornam 400. Nao existem rotas para editar ou apagar comentarios.
+
+O registro bloqueia chamado e autor na mesma transacao, coordenando com encerramento,
+troca de tecnico e desativacao. A conversa preserva comentarios de tecnicos anteriores.
+Chaves estrangeiras protegem o chamado e o autor, e o marcador de historico do autor
+e mantido. O autor vem da sessao autenticada; `autorId` enviado no corpo e ignorado.
+O mesmo vale para `solicitanteId` na abertura de chamados. Veja [autenticacao](autenticacao.md).
+
+A migracao `20261028020000_criar_comentarios` foi adicionada. Para preparar o
+ambiente, configure `orm-basico/.env` a partir do exemplo com a conexao MySQL
+e execute dentro de `orm-basico/`:
+
+```powershell
+npm ci
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js generate
+npm run build
+npm run lint
+npm test
+npm run test:e2e
+```
+
+A validacao final passou em build, lint, TypeScript, 43 testes unitarios e 165 testes
+de integracao com MySQL. As sete migracoes estao aplicadas em `tarefas` e `tarefas_teste`,
+e o diff Prisma nao apontou diferencas.
+
+A suite `test/comentarios.e2e-spec.ts` cobre participantes, inatividade, encerramento,
+validacao, imutabilidade, ordenacao, historico, chaves estrangeiras e encerramentos
+concorrentes. O MySQL local foi configurado como servico automatico; veja
+[como preparar e conferir o ambiente](mysql-windows.md).
