@@ -65,6 +65,4 @@ Start-Service SistemaChamadosMySQL84
 Stop-Service SistemaChamadosMySQL84
 ```
 
-Esta preparacao nao modifica configuracoes de outros computadores. Ao puxar o
-repositorio no ambiente original, preserve seu `.env`, aplique as novas migracoes,
-gere o client, execute build e provisione as senhas das pessoas existentes.
+Para utilizar um servidor MySQL existente, configure o `.env` com a conexao desse servidor, aplique as migracoes, gere o client e execute o build. O script de instalacao acima e opcional e recusa sobrescrever configuracoes existentes.

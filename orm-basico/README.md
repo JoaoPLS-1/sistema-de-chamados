@@ -1,9 +1,10 @@
 # API do sistema de chamados
 
-Esta pasta contém a API NestJS, o schema Prisma e os testes do projeto.
+Esta pasta contém a aplicação NestJS do trabalho. O nome `orm-basico` foi mantido a partir do exercício que deu origem ao projeto.
 
-As instruções de instalação, migração, primeiro acesso, execução e testes estão no [README principal](../README.md). Execute os comandos npm da API nesta pasta.
+- [Preparação e execução](../README.md)
+- [Arquitetura e módulos](../docs/arquitetura.md)
+- [Regras e testes](../docs/andamento-regras.md)
+- [Requisições de exemplo](../exemplos/chamados.http)
 
-- [Regras de negócio](../docs/regras-de-negocio.md)
-- [Autenticação e permissões](../docs/autenticacao.md)
-- [Configuração do MySQL](../docs/mysql-windows.md)
+As dependências são instaladas nesta pasta com `npm ci`. Os comandos da raiz encaminham para os scripts do `package.json` desta pasta; também é possível executá-los diretamente aqui.

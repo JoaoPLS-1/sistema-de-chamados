@@ -1,8 +1,8 @@
-# Acompanhamento das regras de negocio
+# Regras implementadas e testes
 
-Referencia: [regras originais](regras-de-negocio.md). Revisao de 28/10/2026 apos comentarios, autenticacao e validacao completa com MySQL.
+Esta matriz relaciona as 21 [regras do enunciado](regras-de-negocio.md) à implementação da API. O estado do banco depende da preparação do ambiente; consulte o [README](../README.md) para aplicar migrações e reproduzir as verificações.
 
-## Situacao por regra
+## Situação por regra
 
 | Regra | Requisito | Situacao e evidencia |
 | --- | --- | --- |
@@ -28,39 +28,31 @@ Referencia: [regras originais](regras-de-negocio.md). Revisao de 28/10/2026 apos
 | 20 | Comentario nao vazio | Implementado: corpo textual obrigatorio, nao vazio apos trim |
 | 21 | Comentarios imutaveis | Implementado na API: somente criacao, sem rotas de edicao/exclusao |
 
-## Entrega atual e validacao
+## Onde conferir no repositório
 
-- As 21 regras possuem implementacao. Comentarios e autenticacao foram integrados.
-- MySQL 8.4.9 instalado nesta maquina, servico automatico `SistemaChamadosMySQL84`,
-  ouvindo somente em 127.0.0.1:3306. Bancos `tarefas` e `tarefas_teste` separados,
-  com arquivos `.env` e `.env.test` locais, ignorados pelo Git.
-- Sete migracoes aplicadas nos dois bancos, incluindo `criar_comentarios` e
-  `criar_autenticacao`. Diff Prisma sem diferencas e migrate status atualizado.
-- Build, lint e verificacao TypeScript incluindo testes aprovados.
-- 43 testes unitarios e 165 testes de integracao aprovados com MySQL.
-- Login por email e senha, tokens Bearer opacos de oito horas, logout, revogacao
-  por redefinicao de senha/desativacao, limite de tentativas e permissoes por perfil.
-- Solicitante e autor sao identificados pela sessao; IDs no corpo HTTP sao ignorados.
-  Solicitantes consultam/editam seus chamados; tecnicos mantem cadastros e atendimento.
-- Comentarios usam transacao ReadCommitted, bloqueio do chamado seguido do autor e repeticao
-  de conflitos P2034. A conversa aparece no detalhe, ordenada por criadoEm e id.
-- Relacoes com chamado e autor usam chaves estrangeiras Restrict. O historico do autor e
-  marcado na mesma transacao e autores anteriores permanecem na conversa apos troca de tecnico.
-- Assistente local de primeiro acesso validado: cadastro UTF-8, redefinicao de senha,
-  preservacao do perfil existente e revogacao de sessoes. Registros temporarios removidos.
-- O primeiro acesso pessoal deve ser criado com `npm run auth:criar-acesso`;
-  nenhuma conta com senha padrao foi deixada na aplicacao.
-- No outro computador, preservar o `.env`, aplicar as novas migracoes e provisionar
-  credenciais das pessoas existentes. Ver [MySQL Windows](mysql-windows.md) e
-  [autenticacao](autenticacao.md). Resultados abaixo sao historicos da entrega de chamados.
+| Regras / funcionalidade | Código | Testes de integração |
+| --- | --- | --- |
+| 1–4: pessoas e histórico | [pessoas](../orm-basico/src/pessoas), [chamados](../orm-basico/src/chamados), [comentários](../orm-basico/src/comentarios) | [pessoas](../orm-basico/test/pessoas.e2e-spec.ts), [chamados](../orm-basico/test/chamados.e2e-spec.ts), [comentários](../orm-basico/test/comentarios.e2e-spec.ts) |
+| 5–7: tipos de problema | [tipos de problema](../orm-basico/src/tipos-problema), [chamados](../orm-basico/src/chamados) | [tipos de problema](../orm-basico/test/tipos-problema.e2e-spec.ts), [chamados](../orm-basico/test/chamados.e2e-spec.ts) |
+| 8–18: chamados | [service](../orm-basico/src/chamados/chamados.service.ts), [DTOs](../orm-basico/src/chamados/dto) | [chamados](../orm-basico/test/chamados.e2e-spec.ts) |
+| 19–21: comentários | [service](../orm-basico/src/comentarios/comentarios.service.ts), [controller](../orm-basico/src/comentarios/comentarios.controller.ts) | [comentários](../orm-basico/test/comentarios.e2e-spec.ts) |
+| Autenticação e permissões | [auth](../orm-basico/src/auth) | [autenticação](../orm-basico/test/auth.e2e-spec.ts) |
+| CRUD do exercício inicial | [tarefas](../orm-basico/src/tarefas) | [tarefas](../orm-basico/test/tarefas.e2e-spec.ts) |
 
-## Revisao da entrega de chamados
+Os testes de chamados incluem as combinações de transição de situação e disputas concorrentes pelo limite de cinco atendimentos. Os de comentários incluem participação, encerramento, imutabilidade e conversa no detalhe. Os de autenticação exercitam o guard real, login, logout, expiração, permissões e falsificação de identidade no corpo HTTP.
 
-- Rotas de abertura, consulta, filtros, edicao, designacao e situacao implementadas.
-- Historico real de pessoas e tipos integrado; tecnicos anteriores continuam protegidos contra exclusao.
-- ReadCommitted com bloqueio da linha do chamado e da pessoa protege estados e capacidade.
-  Conflitos transacionais P2034 sao repetidos ate tres tentativas.
-- ResolvidoEm registra a ultima resolucao; reabrir preserva o registro e resolver novamente o atualiza.
-- Banco tarefas, migracao criar_chamados aplicada e diff final sem diferencas.
-- Build, lint, 10 testes unitarios e 141 testes de integracao aprovados, incluindo regressao completa.
-- Nenhum modulo de comentarios ou autenticacao foi apresentado como concluido.
+## Como reproduzir
+
+Após instalar as dependências, gerar o Prisma Client e configurar os bancos, execute na raiz:
+
+```powershell
+npm run build
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+```
+
+O último comando exige o banco de testes e `orm-basico/.env.test` preparados conforme o [README](../README.md). A configuração possui fallback para a conexão da aplicação quando esse arquivo não existe.
+
+Os registros anteriores da entrega informam 43 testes unitários e 165 de integração aprovados com MySQL. Esses números são um registro histórico, não uma execução automática no ambiente de quem clona o projeto. A evolução e os resultados de etapas anteriores estão no [histórico da implementação](historico-implementacao.md).
