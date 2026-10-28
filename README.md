@@ -170,3 +170,57 @@ Exemplo de corpo para POST /tarefas:
 Validacao final: build e lint aprovados, 10 testes unitarios e 18 de integracao
 aprovados com MySQL. A API na porta 3000 confirmou criacao e consulta com
 descricao e erro 400 para titulo vazio; a tarefa temporaria foi removida.
+
+## Modulo de pessoas
+
+Primeiro modulo das regras de negocio de Sistema de Chamados.
+A migracao `20261027234000_criar_pessoas` cria a tabela Pessoa e foi aplicada
+no MySQL local. O modelo de tarefas da aula continua disponivel.
+
+| Metodo | Rota | Resultado |
+| --- | --- | --- |
+| POST | /pessoas | Cadastra uma pessoa (201) |
+| GET | /pessoas | Lista pessoas por ID, incluindo inativas (200) |
+| GET | /pessoas/:id | Consulta uma pessoa (200) |
+| PATCH | /pessoas/:id | Atualiza campos informados (200) |
+| DELETE | /pessoas/:id | Exclui pessoa sem historico de chamados (204) |
+
+Exemplo de cadastro:
+
+```json
+{"nome":"Ana Silva","email":"ana@example.com","tipo":"SOLICITANTE"}
+```
+
+- Nome obrigatorio, sem espacos nas pontas, com ate 191 caracteres.
+- E-mail obrigatorio e valido, armazenado em minusculas e sem espacos nas pontas,
+  com ate 254 caracteres. A restricao unica no MySQL protege inclusive contra
+  duplicidade em requisicoes simultaneas. Duplicidade retorna 409.
+- Tipo obrigatorio: `SOLICITANTE` ou `TECNICO`.
+- `ativa` e um booleano e assume true quando omitido no cadastro.
+  Para desativar, envie `{"ativa":false}` no PATCH; para reativar, envie true.
+- PATCH preserva campos omitidos. Null e tipos incorretos retornam 400.
+- Campos desconhecidos sao descartados. Pessoa inexistente retorna 404.
+- Respostas incluem id, nome, email, tipo, ativa, criadaEm e atualizadaEm.
+
+### Integracao com os proximos modulos
+
+PessoasService e exportado e oferece `buscarAtiva(id, tipo?)` para verificar
+existencia, situacao ativa e, quando necessario, perfil. Inatividade ou perfil
+incompativel retornam 409. Os futuros fluxos de abrir, designar e comentar
+precisam executar essas verificacoes na sua operacao de negocio.
+
+O marcador interno `temHistoricoChamados` protege a exclusao de quem ja esteve
+envolvido em chamados. Nao e recebido nem exposto pela API. DELETE verifica
+o marcador na propria operacao de exclusao e retorna 409 quando houver historico;
+a pessoa ainda pode ser desativada. Violacao de chave estrangeira tambem retorna 409.
+
+Ao implementar chamados e comentarios, sera necessario registrar o primeiro
+envolvimento com `temHistoricoChamados: true` na mesma transacao da abertura,
+designacao ou comentario e manter esse marcador mesmo apos trocar o responsavel.
+As relacoes com chamados ainda serao criadas nesses modulos; o teste atual simula
+o historico pelo Prisma para verificar a protecao de exclusao.
+
+Validacao: build e lint aprovados, 10 testes unitarios e 44 de integracao aprovados,
+incluindo CRUD de pessoas, normalizacao, perfis, ativacao/desativacao, validacao,
+unicidade concorrente e protecao do historico. Os testes removem apenas seus
+registros temporarios. O diff Prisma confirmou banco e schema sincronizados.

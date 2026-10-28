@@ -19,3 +19,19 @@ model Tarefa {
   concluida Boolean  @default(false)
   criadaEm  DateTime @default(now())
 }
+
+enum TipoPessoa {
+  SOLICITANTE
+  TECNICO
+}
+
+model Pessoa {
+  id                   Int        @id @default(autoincrement())
+  nome                 String     @db.VarChar(191)
+  email                String     @unique @db.VarChar(254)
+  tipo                 TipoPessoa
+  ativa                Boolean    @default(true)
+  temHistoricoChamados Boolean    @default(false)
+  criadaEm             DateTime   @default(now())
+  atualizadaEm         DateTime   @updatedAt
+}
