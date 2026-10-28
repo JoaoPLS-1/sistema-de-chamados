@@ -1,0 +1,114 @@
+# Execute uma requisição por vez, após preparar a API pelo README.
+# Substitua os valores abaixo pelos dados e respostas da sua execução.
+# Nunca salve senhas reais ou tokens neste arquivo versionado.
+@baseUrl = http://localhost:3000
+@emailTecnico = tecnico@example.com
+@senhaTecnico = SUBSTITUA_LOCALMENTE
+@tokenTecnico = SUBSTITUA_PELO_TOKEN_DO_LOGIN
+@tecnicoId = 1
+@solicitanteId = 2
+@tipoProblemaId = 1
+@chamadoId = 1
+@tokenSolicitante = SUBSTITUA_PELO_TOKEN_DO_LOGIN
+
+### 1. Login como técnico (200). Copie pessoa.id e token para as variáveis.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"{{emailTecnico}}","senha":"{{senhaTecnico}}"}
+
+### 2. Conferir identidade (200)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{tokenTecnico}}
+
+### 3. Criar solicitante (201). Copie id para solicitanteId.
+POST {{baseUrl}}/pessoas
+Authorization: Bearer {{tokenTecnico}}
+Content-Type: application/json
+
+{"nome":"Solicitante da demonstração","email":"solicitante@example.com","tipo":"SOLICITANTE"}
+
+### 4. Definir senha fictícia do solicitante (204); apenas para ambiente de demonstração
+PUT {{baseUrl}}/pessoas/{{solicitanteId}}/senha
+Authorization: Bearer {{tokenTecnico}}
+Content-Type: application/json
+
+{"senha":"SenhaDemonstracao123!"}
+
+### 5. Criar tipo (201). Copie id para tipoProblemaId; utilize nome único ao repetir.
+POST {{baseUrl}}/tipos-problema
+Authorization: Bearer {{tokenTecnico}}
+Content-Type: application/json
+
+{"nome":"Rede da demonstração"}
+
+### 6. Login como solicitante (200). Copie token para tokenSolicitante.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"solicitante@example.com","senha":"SenhaDemonstracao123!"}
+
+### 7. Abrir chamado (201): ABERTO, sem técnico e prioridade MEDIA. Copie id para chamadoId.
+POST {{baseUrl}}/chamados
+Authorization: Bearer {{tokenSolicitante}}
+Content-Type: application/json
+
+{"titulo":"Falha na rede","descricao":"Não consigo acessar a rede interna.","tipoProblemaId":{{tipoProblemaId}}}
+
+### 8. Designar técnico (200): situação passa para EM_ATENDIMENTO
+PATCH {{baseUrl}}/chamados/{{chamadoId}}/tecnico
+Authorization: Bearer {{tokenTecnico}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoId}}}
+
+### 9. Comentar como solicitante (201)
+POST {{baseUrl}}/chamados/{{chamadoId}}/comentarios
+Authorization: Bearer {{tokenSolicitante}}
+Content-Type: application/json
+
+{"corpo":"O problema persiste após reiniciar o computador."}
+
+### 10. Consultar chamado com a conversa (200)
+GET {{baseUrl}}/chamados/{{chamadoId}}
+Authorization: Bearer {{tokenSolicitante}}
+
+### 11. Filtrar chamados (200)
+GET {{baseUrl}}/chamados?situacao=EM_ATENDIMENTO&prioridade=MEDIA&tipoProblemaId={{tipoProblemaId}}&tecnicoId={{tecnicoId}}
+Authorization: Bearer {{tokenTecnico}}
+
+### 12. Resolver (200): resolvidoEm é preenchido
+PATCH {{baseUrl}}/chamados/{{chamadoId}}/situacao
+Authorization: Bearer {{tokenTecnico}}
+Content-Type: application/json
+
+{"situacao":"RESOLVIDO"}
+
+### 13. Fechar (200)
+PATCH {{baseUrl}}/chamados/{{chamadoId}}/situacao
+Authorization: Bearer {{tokenTecnico}}
+Content-Type: application/json
+
+{"situacao":"FECHADO"}
+
+### 14. Comentário após fechamento (409)
+POST {{baseUrl}}/chamados/{{chamadoId}}/comentarios
+Authorization: Bearer {{tokenSolicitante}}
+Content-Type: application/json
+
+{"corpo":"Este comentário deve ser recusado."}
+
+### 15. Título inválido (400)
+POST {{baseUrl}}/chamados
+Authorization: Bearer {{tokenSolicitante}}
+Content-Type: application/json
+
+{"titulo":"Oi","descricao":"Descrição com tamanho válido.","tipoProblemaId":{{tipoProblemaId}}}
+
+### 16. Encerrar sessão do solicitante (204)
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{tokenSolicitante}}
+
+### 17. Consultar com token revogado (401)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{tokenSolicitante}}
