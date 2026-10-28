@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { AuthGuard, identidadeNegocio } from './identidade-negocio.js';
 
 describe('Comentarios (e2e com MySQL)', () => {
   let app: INestApplication<App>;
@@ -31,7 +32,10 @@ describe('Comentarios (e2e com MySQL)', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(AuthGuard)
+      .useValue(identidadeNegocio)
+      .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
@@ -187,12 +191,6 @@ describe('Comentarios (e2e com MySQL)', () => {
     { corpo: false },
     { corpo: [] },
     { corpo: {} },
-    { autorId: undefined },
-    { autorId: null },
-    { autorId: '1' },
-    { autorId: 0 },
-    { autorId: -1 },
-    { autorId: 1.5 },
   ])('valida corpo e autor %j', async (extra) => {
     const body = Object.keys(extra).length
       ? { autorId: solicitanteId, corpo: 'Teste', ...extra }

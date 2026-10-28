@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { PrioridadeChamado } from '../../generated/prisma/enums.js';
 
-export class CriarChamadoDto {
+export class DadosChamadoDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
@@ -32,9 +32,11 @@ export class CriarChamadoDto {
 
   @IsInt()
   @Min(1)
-  solicitanteId: number;
+  tipoProblemaId: number;
+}
 
+export class CriarChamadoDto extends DadosChamadoDto {
   @IsInt()
   @Min(1)
-  tipoProblemaId: number;
+  solicitanteId: number;
 }

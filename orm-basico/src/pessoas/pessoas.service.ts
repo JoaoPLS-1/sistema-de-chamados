@@ -71,15 +71,20 @@ export class PessoasService {
 
   async atualizar(id: number, dto: AtualizarPessoaDto) {
     try {
-      return await this.prisma.pessoa.update({
-        where: { id },
-        data: {
-          nome: dto.nome,
-          email: dto.email,
-          tipo: dto.tipo,
-          ativa: dto.ativa,
-        },
-        select: camposPublicos,
+      return await this.prisma.$transaction(async (tx) => {
+        const pessoa = await tx.pessoa.update({
+          where: { id },
+          data: {
+            nome: dto.nome,
+            email: dto.email,
+            tipo: dto.tipo,
+            ativa: dto.ativa,
+          },
+          select: camposPublicos,
+        });
+        if (dto.ativa === false)
+          await tx.sessao.deleteMany({ where: { pessoaId: id } });
+        return pessoa;
       });
     } catch (erro) {
       this.tratarErro(erro);

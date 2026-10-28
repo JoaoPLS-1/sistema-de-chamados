@@ -12,12 +12,14 @@ import {
 import { TiposProblemaService } from './tipos-problema.service.js';
 import { CriarTipoProblemaDto } from './dto/criar-tipo-problema.dto.js';
 import { AtualizarTipoProblemaDto } from './dto/atualizar-tipo-problema.dto.js';
+import { SomenteTecnicos } from '../auth/auth.decorators.js';
 
 @Controller('tipos-problema')
 export class TiposProblemaController {
   constructor(private readonly tiposProblemaService: TiposProblemaService) {}
 
   @Post()
+  @SomenteTecnicos()
   criar(@Body() dto: CriarTipoProblemaDto) {
     return this.tiposProblemaService.criar(dto);
   }
@@ -33,6 +35,7 @@ export class TiposProblemaController {
   }
 
   @Patch(':id')
+  @SomenteTecnicos()
   atualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AtualizarTipoProblemaDto,
@@ -41,6 +44,7 @@ export class TiposProblemaController {
   }
 
   @Delete(':id')
+  @SomenteTecnicos()
   @HttpCode(204)
   remover(@Param('id', ParseIntPipe) id: number) {
     return this.tiposProblemaService.remover(id);

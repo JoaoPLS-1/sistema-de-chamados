@@ -10,6 +10,7 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { TiposProblemaService } from '../src/tipos-problema/tipos-problema.service.js';
+import { AuthGuard, identidadeNegocio } from './identidade-negocio.js';
 
 describe('Tipos de problema (e2e com MySQL)', () => {
   let app: INestApplication<App>;
@@ -19,7 +20,10 @@ describe('Tipos de problema (e2e com MySQL)', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(AuthGuard)
+      .useValue(identidadeNegocio)
+      .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
@@ -194,12 +198,10 @@ describe('Tipos de problema (e2e com MySQL)', () => {
   it('protege historico contra exclusao e alteracao via API e permite desativar', async () => {
     const tipo = await criar();
     // Simula o primeiro uso que sera registrado pelo modulo de chamados.
-    await app
-      .get(PrismaService)
-      .tipoProblema.update({
-        where: { id: tipo.id },
-        data: { temHistoricoChamados: true },
-      });
+    await app.get(PrismaService).tipoProblema.update({
+      where: { id: tipo.id },
+      data: { temHistoricoChamados: true },
+    });
     await request(app.getHttpServer())
       .delete('/tipos-problema/' + tipo.id)
       .expect(409);

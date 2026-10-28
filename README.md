@@ -3,6 +3,12 @@
 API NestJS em `orm-basico/` e roteiro de aula em `index.html`.
 A aplicacao utilizara diretamente um servidor MySQL existente.
 
+Estado atual: os quatro modulos de regras de negocio e a autenticacao estao implementados.
+Consulte [autenticacao e primeiro acesso](docs/autenticacao.md) e
+[configuracao do MySQL no Windows](docs/mysql-windows.md). Todas as rotas agora exigem
+Bearer, exceto o login. Os exemplos e resultados de etapas anteriores abaixo sao historicos;
+a identidade do solicitante/autor agora vem da sessao, e nao do corpo HTTP.
+
 ## Estrutura
 
 - `orm-basico/src/`: codigo da API.
@@ -311,7 +317,7 @@ O proximo modulo foi implementado em `orm-basico/src/comentarios/`:
   com o ID e nome do autor. A listagem geral de chamados nao carrega a conversa.
 
 ```json
-{"autorId":1,"corpo":"O problema continua ao tentar acessar o sistema."}
+{"corpo":"O problema continua ao tentar acessar o sistema."}
 ```
 
 O autor deve estar ativo e ser o solicitante ou o tecnico atualmente responsavel.
@@ -323,8 +329,8 @@ invalidos retornam 400. Nao existem rotas para editar ou apagar comentarios.
 O registro bloqueia chamado e autor na mesma transacao, coordenando com encerramento,
 troca de tecnico e desativacao. A conversa preserva comentarios de tecnicos anteriores.
 Chaves estrangeiras protegem o chamado e o autor, e o marcador de historico do autor
-e mantido. `autorId` identifica um cadastro; a API ainda nao autentica quem envia a
-requisicao, assim como ocorre com `solicitanteId` na abertura de chamados.
+e mantido. O autor vem da sessao autenticada; `autorId` enviado no corpo e ignorado.
+O mesmo vale para `solicitanteId` na abertura de chamados. Veja [autenticacao](docs/autenticacao.md).
 
 A migracao `20261028020000_criar_comentarios` foi adicionada. Para preparar o
 ambiente, configure `orm-basico/.env` a partir do exemplo com a conexao MySQL
@@ -340,10 +346,11 @@ npm test
 npm run test:e2e
 ```
 
-A validacao local passou em build, lint e 37 testes unitarios (27 novos). O schema
-Prisma foi validado, o client gerado e o SQL da migracao conferido por diff entre schemas.
+A validacao final passou em build, lint, TypeScript, 43 testes unitarios e 165 testes
+de integracao com MySQL. As sete migracoes estao aplicadas em `tarefas` e `tarefas_teste`,
+e o diff Prisma nao apontou diferencas.
 
 A suite `test/comentarios.e2e-spec.ts` cobre participantes, inatividade, encerramento,
 validacao, imutabilidade, ordenacao, historico, chaves estrangeiras e encerramentos
-concorrentes. Nesta copia, a migracao e os testes com MySQL ainda nao foram executados:
-o `.env` e o servico MySQL usados nas entregas anteriores nao estao disponiveis.
+concorrentes. O MySQL local foi configurado como servico automatico; veja
+[como preparar e conferir o ambiente](docs/mysql-windows.md).

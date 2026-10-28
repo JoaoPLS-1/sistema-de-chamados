@@ -12,8 +12,10 @@ import {
 import { PessoasService } from './pessoas.service.js';
 import { CriarPessoaDto } from './dto/criar-pessoa.dto.js';
 import { AtualizarPessoaDto } from './dto/atualizar-pessoa.dto.js';
+import { SomenteTecnicos } from '../auth/auth.decorators.js';
 
 @Controller('pessoas')
+@SomenteTecnicos()
 export class PessoasController {
   constructor(private readonly pessoasService: PessoasService) {}
 

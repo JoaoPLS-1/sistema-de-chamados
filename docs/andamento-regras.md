@@ -1,6 +1,6 @@
 # Acompanhamento das regras de negocio
 
-Referencia: [regras originais](regras-de-negocio.md). Revisao apos a implementacao do modulo de comentarios; validacao com MySQL pendente nesta copia.
+Referencia: [regras originais](regras-de-negocio.md). Revisao de 28/10/2026 apos comentarios, autenticacao e validacao completa com MySQL.
 
 ## Situacao por regra
 
@@ -28,24 +28,31 @@ Referencia: [regras originais](regras-de-negocio.md). Revisao apos a implementac
 | 20 | Comentario nao vazio | Implementado: corpo textual obrigatorio, nao vazio apos trim |
 | 21 | Comentarios imutaveis | Implementado na API: somente criacao, sem rotas de edicao/exclusao |
 
-## Proxima etapa e pendencias
+## Entrega atual e validacao
 
-- Aplicar a migracao `20261028020000_criar_comentarios` no ambiente com MySQL configurado.
-- Executar testes de integracao com MySQL, incluindo a nova suite de comentarios e regressao completa.
-- Validacao local desta entrega: build e lint aprovados, 37 testes unitarios aprovados
-  (27 novos), schema Prisma valido e client gerado. Diff entre o schema anterior e
-  o atual confirmou o SQL da migracao, sem precisar conectar ao banco.
-- Verificacao TypeScript incluindo testes aprovada (`tsc --noEmit --incremental false --rootDir .`).
-  Imports de tipos do Supertest foram ajustados para a resolucao ESM/NodeNext existente.
-- Definir identificacao/autenticacao do autor. Por enquanto, a abertura recebe solicitanteId;
-  isso identifica o cadastro referenciado, sem autenticar a identidade de quem envia a requisicao.
+- As 21 regras possuem implementacao. Comentarios e autenticacao foram integrados.
+- MySQL 8.4.9 instalado nesta maquina, servico automatico `SistemaChamadosMySQL84`,
+  ouvindo somente em 127.0.0.1:3306. Bancos `tarefas` e `tarefas_teste` separados,
+  com arquivos `.env` e `.env.test` locais, ignorados pelo Git.
+- Sete migracoes aplicadas nos dois bancos, incluindo `criar_comentarios` e
+  `criar_autenticacao`. Diff Prisma sem diferencas e migrate status atualizado.
+- Build, lint e verificacao TypeScript incluindo testes aprovados.
+- 43 testes unitarios e 165 testes de integracao aprovados com MySQL.
+- Login por email e senha, tokens Bearer opacos de oito horas, logout, revogacao
+  por redefinicao de senha/desativacao, limite de tentativas e permissoes por perfil.
+- Solicitante e autor sao identificados pela sessao; IDs no corpo HTTP sao ignorados.
+  Solicitantes consultam/editam seus chamados; tecnicos mantem cadastros e atendimento.
 - Comentarios usam transacao ReadCommitted, bloqueio do chamado seguido do autor e repeticao
   de conflitos P2034. A conversa aparece no detalhe, ordenada por criadoEm e id.
 - Relacoes com chamado e autor usam chaves estrangeiras Restrict. O historico do autor e
   marcado na mesma transacao e autores anteriores permanecem na conversa apos troca de tecnico.
-- Esta copia esta em outro computador, sem `.env` ou servico MySQL disponivel;
-  por orientacao do usuario, a conexao existente sera mantida no ambiente original.
-  os resultados de testes da entrega anterior abaixo sao historicos, nao desta implementacao.
+- Assistente local de primeiro acesso validado: cadastro UTF-8, redefinicao de senha,
+  preservacao do perfil existente e revogacao de sessoes. Registros temporarios removidos.
+- O primeiro acesso pessoal deve ser criado com `npm run auth:criar-acesso`;
+  nenhuma conta com senha padrao foi deixada na aplicacao.
+- No outro computador, preservar o `.env`, aplicar as novas migracoes e provisionar
+  credenciais das pessoas existentes. Ver [MySQL Windows](mysql-windows.md) e
+  [autenticacao](autenticacao.md). Resultados abaixo sao historicos da entrega de chamados.
 
 ## Revisao da entrega de chamados
 

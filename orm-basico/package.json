@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "nest build",
+    "auth:criar-acesso": "powershell -NoProfile -ExecutionPolicy Bypass -File ../infra/auth/criar-acesso.ps1",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

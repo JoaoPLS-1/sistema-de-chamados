@@ -74,22 +74,23 @@ export class ChamadosService {
     });
   }
 
-  listar(filtros: FiltrarChamadosDto = {}) {
+  listar(filtros: FiltrarChamadosDto = {}, solicitanteId?: number) {
     return this.prisma.chamado.findMany({
       where: {
         situacao: filtros.situacao,
         prioridade: filtros.prioridade,
         tipoProblemaId: filtros.tipoProblemaId,
         tecnicoId: filtros.tecnicoId,
+        solicitanteId,
       },
       include: detalhes,
       orderBy: { id: 'asc' },
     });
   }
 
-  async buscar(id: number) {
+  async buscar(id: number, solicitanteId?: number) {
     const chamado = await this.prisma.chamado.findUnique({
-      where: { id },
+      where: { id, solicitanteId },
       include: {
         ...detalhes,
         comentarios: {
@@ -102,9 +103,14 @@ export class ChamadosService {
     return chamado;
   }
 
-  atualizar(id: number, dto: AtualizarChamadoDto) {
+  atualizar(id: number, dto: AtualizarChamadoDto, solicitanteId?: number) {
     return this.transacionar(async (tx) => {
       const chamado = await this.buscarBloqueado(tx, id);
+      if (
+        solicitanteId !== undefined &&
+        chamado.solicitanteId !== solicitanteId
+      )
+        throw new NotFoundException('Chamado não encontrado');
       this.verificarAbertoParaAlteracoes(chamado);
       return tx.chamado.update({
         where: { id },

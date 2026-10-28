@@ -6,6 +6,7 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { SituacaoChamado, TipoPessoa } from '../src/generated/prisma/enums.js';
+import { AuthGuard, identidadeNegocio } from './identidade-negocio.js';
 
 describe('Chamados (e2e com MySQL)', () => {
   let app: INestApplication<App>;
@@ -22,7 +23,10 @@ describe('Chamados (e2e com MySQL)', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(AuthGuard)
+      .useValue(identidadeNegocio)
+      .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
@@ -209,12 +213,6 @@ describe('Chamados (e2e com MySQL)', () => {
     { descricao: true },
     { prioridade: null },
     { prioridade: 'URGENTE' },
-    { solicitanteId: undefined },
-    { solicitanteId: null },
-    { solicitanteId: '1' },
-    { solicitanteId: 0 },
-    { solicitanteId: -1 },
-    { solicitanteId: 1.5 },
     { tipoProblemaId: undefined },
     { tipoProblemaId: null },
     { tipoProblemaId: '1' },

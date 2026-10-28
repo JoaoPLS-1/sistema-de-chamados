@@ -11,6 +11,7 @@ import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { PessoasService } from '../src/pessoas/pessoas.service.js';
 import { TipoPessoa } from '../src/generated/prisma/enums.js';
+import { AuthGuard, identidadeNegocio } from './identidade-negocio.js';
 
 describe('Pessoas (e2e com MySQL)', () => {
   let app: INestApplication<App>;
@@ -25,7 +26,10 @@ describe('Pessoas (e2e com MySQL)', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(AuthGuard)
+      .useValue(identidadeNegocio)
+      .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
@@ -226,12 +230,10 @@ describe('Pessoas (e2e com MySQL)', () => {
   it('bloqueia exclusao de quem tem historico, permite desativar e protege o marcador interno', async () => {
     const pessoa = await criar();
     // Simula o vinculo que os futuros modulos de chamados/comentarios registrarao.
-    await app
-      .get(PrismaService)
-      .pessoa.update({
-        where: { id: pessoa.id },
-        data: { temHistoricoChamados: true },
-      });
+    await app.get(PrismaService).pessoa.update({
+      where: { id: pessoa.id },
+      data: { temHistoricoChamados: true },
+    });
     await request(app.getHttpServer())
       .delete('/pessoas/' + pessoa.id)
       .expect(409);

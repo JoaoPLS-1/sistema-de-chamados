@@ -10,14 +10,12 @@ describe('ComentariosService', () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
       chamado: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({
-            id: 1,
-            solicitanteId: 2,
-            tecnicoId: 3,
-            situacao,
-          }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 1,
+          solicitanteId: 2,
+          tecnicoId: 3,
+          situacao,
+        }),
       },
       pessoa: { update: vi.fn().mockResolvedValue({}) },
       comentario: { create: vi.fn().mockResolvedValue({ id: 10 }) },

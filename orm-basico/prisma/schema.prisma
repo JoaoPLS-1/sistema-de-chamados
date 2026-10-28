@@ -37,6 +37,8 @@ model Pessoa {
   chamadosAbertos      Chamado[]    @relation("SolicitanteChamado")
   chamadosAtribuidos   Chamado[]    @relation("TecnicoChamado")
   comentarios          Comentario[]
+  credencial           Credencial?
+  sessoes              Sessao[]
 }
 
 model TipoProblema {
@@ -99,4 +101,20 @@ model Comentario {
 
   @@index([chamadoId, criadoEm, id])
   @@index([autorId])
+}
+
+model Credencial {
+  pessoaId  Int    @id
+  senhaHash String @db.VarChar(255)
+  pessoa    Pessoa @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+}
+
+model Sessao {
+  tokenHash String   @id @db.Char(64)
+  pessoaId  Int
+  expiraEm  DateTime
+  pessoa    Pessoa   @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@index([pessoaId])
+  @@index([expiraEm])
 }
