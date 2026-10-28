@@ -224,3 +224,42 @@ Validacao: build e lint aprovados, 10 testes unitarios e 44 de integracao aprova
 incluindo CRUD de pessoas, normalizacao, perfis, ativacao/desativacao, validacao,
 unicidade concorrente e protecao do historico. Os testes removem apenas seus
 registros temporarios. O diff Prisma confirmou banco e schema sincronizados.
+
+## Modulo de tipos de problema
+
+Segundo modulo das regras de negocio, com rotas em `/tipos-problema`:
+
+| Metodo | Rota | Resultado |
+| --- | --- | --- |
+| POST | /tipos-problema | Cadastra tipo de problema (201) |
+| GET | /tipos-problema | Lista todos por ID, incluindo desativados (200) |
+| GET | /tipos-problema/:id | Consulta um tipo (200) |
+| PATCH | /tipos-problema/:id | Atualiza nome e/ou ativo (200) |
+| DELETE | /tipos-problema/:id | Exclui tipo sem historico (204) |
+
+```json
+{"nome":"Rede","ativo":true}
+```
+
+Nome obrigatorio, nao vazio, sem espacos nas pontas e com ate 191 caracteres.
+O nome e unico inclusive entre tipos desativados; a collation do banco local
+considera maiusculas e minusculas equivalentes. A restricao unica protege
+requisicoes simultaneas, retornando 409 quando houver duplicidade.
+
+Ativo assume true se omitido no cadastro. Envie `{"ativo":false}` no PATCH
+para desativar ou true para reativar. Campos omitidos sao preservados; null
+e tipos incorretos retornam 400. Registros inexistentes retornam 404.
+
+O marcador interno temHistoricoChamados nao e recebido nem exposto pela API.
+DELETE verifica esse marcador atomicamente e retorna 409 se o tipo ja foi
+usado. O futuro modulo de chamados deve marcar o primeiro uso na mesma
+transacao da abertura e verificar o tipo ativo. TiposProblemaService e
+exportado e oferece buscarAtivo para a integracao.
+
+A migracao `20261028002000_criar_tipos_problema` foi aplicada ao banco tarefas.
+O diff final nao apontou diferencas. Build, lint, 10 testes unitarios e 62 testes
+de integracao passaram, incluindo a regressao completa de pessoas e tarefas.
+
+As regras originais estao em [docs/regras-de-negocio.md](docs/regras-de-negocio.md).
+O [acompanhamento das 21 regras](docs/andamento-regras.md) registra o que foi
+implementado e o que ainda depende dos proximos modulos. O proximo e chamados.

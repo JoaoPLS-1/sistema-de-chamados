@@ -35,3 +35,12 @@ model Pessoa {
   criadaEm             DateTime   @default(now())
   atualizadaEm         DateTime   @updatedAt
 }
+
+model TipoProblema {
+  id                   Int      @id @default(autoincrement())
+  nome                 String   @unique @db.VarChar(191)
+  ativo                Boolean  @default(true)
+  temHistoricoChamados Boolean  @default(false)
+  criadoEm             DateTime @default(now())
+  atualizadoEm         DateTime @updatedAt
+}
