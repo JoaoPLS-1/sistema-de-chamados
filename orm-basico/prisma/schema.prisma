@@ -34,13 +34,54 @@ model Pessoa {
   temHistoricoChamados Boolean    @default(false)
   criadaEm             DateTime   @default(now())
   atualizadaEm         DateTime   @updatedAt
+  chamadosAbertos      Chamado[]  @relation("SolicitanteChamado")
+  chamadosAtribuidos   Chamado[]  @relation("TecnicoChamado")
 }
 
 model TipoProblema {
-  id                   Int      @id @default(autoincrement())
-  nome                 String   @unique @db.VarChar(191)
-  ativo                Boolean  @default(true)
-  temHistoricoChamados Boolean  @default(false)
-  criadoEm             DateTime @default(now())
-  atualizadoEm         DateTime @updatedAt
+  id                   Int       @id @default(autoincrement())
+  nome                 String    @unique @db.VarChar(191)
+  ativo                Boolean   @default(true)
+  temHistoricoChamados Boolean   @default(false)
+  criadoEm             DateTime  @default(now())
+  atualizadoEm         DateTime  @updatedAt
+  chamados             Chamado[]
+}
+
+enum SituacaoChamado {
+  ABERTO
+  EM_ATENDIMENTO
+  RESOLVIDO
+  FECHADO
+  CANCELADO
+}
+
+enum PrioridadeChamado {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Chamado {
+  id             Int               @id @default(autoincrement())
+  titulo         String            @db.VarChar(100)
+  descricao      String            @db.LongText
+  prioridade     PrioridadeChamado @default(MEDIA)
+  situacao       SituacaoChamado   @default(ABERTO)
+  solicitanteId  Int
+  tecnicoId      Int?
+  tipoProblemaId Int
+  criadoEm       DateTime          @default(now())
+  atualizadoEm   DateTime          @updatedAt
+  resolvidoEm    DateTime?
+  solicitante    Pessoa            @relation("SolicitanteChamado", fields: [solicitanteId], references: [id], onDelete: Restrict)
+  tecnico        Pessoa?           @relation("TecnicoChamado", fields: [tecnicoId], references: [id], onDelete: Restrict)
+  tipoProblema   TipoProblema      @relation(fields: [tipoProblemaId], references: [id], onDelete: Restrict)
+
+  @@index([tecnicoId, situacao])
+  @@index([situacao])
+  @@index([prioridade])
+  @@index([tipoProblemaId])
+  @@index([solicitanteId])
 }

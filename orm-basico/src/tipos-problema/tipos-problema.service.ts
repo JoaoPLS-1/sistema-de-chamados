@@ -38,8 +38,8 @@ export class TiposProblemaService {
     });
   }
 
-  async buscar(id: number) {
-    const tipo = await this.prisma.tipoProblema.findUnique({
+  async buscar(id: number, tx: Prisma.TransactionClient = this.prisma) {
+    const tipo = await tx.tipoProblema.findUnique({
       where: { id },
       select: camposPublicos,
     });
@@ -48,8 +48,8 @@ export class TiposProblemaService {
   }
 
   // O modulo de chamados deve executar a verificacao na transacao de abertura.
-  async buscarAtivo(id: number) {
-    const tipo = await this.buscar(id);
+  async buscarAtivo(id: number, tx: Prisma.TransactionClient = this.prisma) {
+    const tipo = await this.buscar(id, tx);
     if (!tipo.ativo) throw new ConflictException('Tipo de problema desativado');
     return tipo;
   }

@@ -46,8 +46,8 @@ export class PessoasService {
     });
   }
 
-  async buscar(id: number) {
-    const pessoa = await this.prisma.pessoa.findUnique({
+  async buscar(id: number, tx: Prisma.TransactionClient = this.prisma) {
+    const pessoa = await tx.pessoa.findUnique({
       where: { id },
       select: camposPublicos,
     });
@@ -56,8 +56,12 @@ export class PessoasService {
   }
 
   // Reutilizado pelos proximos modulos antes de abrir, designar ou comentar.
-  async buscarAtiva(id: number, tipo?: TipoPessoa) {
-    const pessoa = await this.buscar(id);
+  async buscarAtiva(
+    id: number,
+    tipo?: TipoPessoa,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const pessoa = await this.buscar(id, tx);
     if (!pessoa.ativa) throw new ConflictException('Pessoa inativa');
     if (tipo !== undefined && pessoa.tipo !== tipo) {
       throw new ConflictException('Tipo de pessoa incompatível com a operação');

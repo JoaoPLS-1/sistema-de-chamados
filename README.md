@@ -263,3 +263,41 @@ de integracao passaram, incluindo a regressao completa de pessoas e tarefas.
 As regras originais estao em [docs/regras-de-negocio.md](docs/regras-de-negocio.md).
 O [acompanhamento das 21 regras](docs/andamento-regras.md) registra o que foi
 implementado e o que ainda depende dos proximos modulos. O proximo e chamados.
+
+## Modulo de chamados
+
+| Metodo | Rota | Acao |
+| --- | --- | --- |
+| POST | /chamados | Abre chamado (201) |
+| GET | /chamados | Lista e filtra (200) |
+| GET | /chamados/:id | Consulta detalhes (200) |
+| PATCH | /chamados/:id | Edita titulo, descricao e prioridade (200) |
+| PATCH | /chamados/:id/tecnico | Designa ou troca tecnico (200) |
+| PATCH | /chamados/:id/situacao | Executa transicao permitida (200) |
+
+Exemplo de abertura (use IDs existentes de solicitante e tipo ativos):
+
+```json
+{"titulo":"Falha na rede","descricao":"Nao consigo acessar a rede interna","solicitanteId":1,"tipoProblemaId":1,"prioridade":"MEDIA"}
+```
+
+Chamados nascem ABERTO e sem tecnico. Titulo tem de 5 a 100 caracteres e descricao
+no minimo 10, apos trim. Prioridades: BAIXA, MEDIA (padrao), ALTA e CRITICA.
+Filtros combinaveis: situacao, prioridade, tipoProblemaId e tecnicoId.
+
+Designacao recebe `{"tecnicoId":2}` e inicia atendimento quando o chamado esta aberto.
+Mudanca de situacao recebe, por exemplo, `{"situacao":"RESOLVIDO"}`.
+O fluxo e ABERTO -> EM_ATENDIMENTO -> RESOLVIDO -> FECHADO, com reabertura de
+RESOLVIDO para EM_ATENDIMENTO e cancelamento de ABERTO ou EM_ATENDIMENTO.
+Chamados encerrados nao podem ser editados. Nao existe rota de exclusao de chamado.
+
+Transacoes com bloqueios protegem o limite de cinco atendimentos por tecnico,
+transicoes concorrentes, atividade/perfil e historico de pessoas e tipos.
+Tecnicos anteriores continuam protegidos contra exclusao apos troca de responsavel.
+ResolvidoEm preserva a ultima resolucao ao reabrir e e atualizado ao resolver novamente.
+Violacoes de regra retornam 409, dados invalidos 400 e registros inexistentes 404.
+
+Migracao `20261028010000_criar_chamados` aplicada em tarefas. Build, lint,
+10 testes unitarios e 141 de integracao aprovados. Comentarios, conversa no detalhe
+e identificacao/autenticacao do autor continuam registrados como pendencias em
+[andamento das regras](docs/andamento-regras.md).
