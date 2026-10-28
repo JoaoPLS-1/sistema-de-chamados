@@ -1,10 +1,19 @@
 {
-  "dependencies": {
-    "@prisma/adapter-mariadb": "^7.10.1",
-    "@prisma/client": "^7.10.1",
-    "dotenv": "^18.0.9"
-  },
-  "devDependencies": {
-    "prisma": "^8.0.0-rc.28"
+  "name": "sistema-de-chamados",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Atalhos para a API do trabalho de fixação em orm-basico",
+  "scripts": {
+    "install:api": "npm --prefix orm-basico ci",
+    "build": "npm --prefix orm-basico run build",
+    "start:dev": "npm --prefix orm-basico run start:dev",
+    "auth:criar-acesso": "npm --prefix orm-basico run auth:criar-acesso",
+    "db:migrate": "npm --prefix orm-basico run db:migrate",
+    "db:generate": "npm --prefix orm-basico run db:generate",
+    "db:status": "npm --prefix orm-basico run db:status",
+    "lint": "npm --prefix orm-basico run lint",
+    "typecheck": "npm --prefix orm-basico run typecheck",
+    "test": "npm --prefix orm-basico test",
+    "test:e2e": "npm --prefix orm-basico run test:e2e"
   }
 }
