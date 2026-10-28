@@ -1,6 +1,6 @@
 # Acompanhamento das regras de negocio
 
-Referencia: [regras originais](regras-de-negocio.md). Revisao apos o modulo de chamados.
+Referencia: [regras originais](regras-de-negocio.md). Revisao apos a implementacao do modulo de comentarios; validacao com MySQL pendente nesta copia.
 
 ## Situacao por regra
 
@@ -8,7 +8,7 @@ Referencia: [regras originais](regras-de-negocio.md). Revisao apos o modulo de c
 | --- | --- | --- |
 | 1 | E-mail valido e unico | Implementado em pessoas; testes de validacao, normalizacao e unicidade concorrente |
 | 2 | Solicitante ou tecnico | Implementado com enum no banco e validacao dos DTOs |
-| 3 | Inativos nao abrem, atendem ou comentam | Abertura, designacao e reabertura verificam atividade na transacao; falta integrar comentarios |
+| 3 | Inativos nao abrem, atendem ou comentam | Implementado: abertura, designacao, reabertura e comentarios verificam atividade na transacao |
 | 4 | Pessoa com historico nao pode ser removida | Implementado: historico de solicitante e tecnicos registrado transacionalmente, preservado apos troca de responsavel e testado com chamados reais |
 | 5 | Nome de tipo de problema unico | Implementado; restricao unica no banco, validacao e testes concorrentes |
 | 6 | Tipo desativado nao aceita novos chamados | Implementado: tipo ativo verificado com bloqueio na transacao de abertura |
@@ -20,24 +20,32 @@ Referencia: [regras originais](regras-de-negocio.md). Revisao apos o modulo de c
 | 12 | Responsavel e um tecnico ativo | Implementado: designacao apenas de tecnico ativo |
 | 13 | Designacao inicia atendimento | Implementado: designacao em ABERTO inicia EM_ATENDIMENTO automaticamente |
 | 14 | Somente transicoes permitidas | Implementado: todas as 25 combinacoes de origem/destino testadas; inicio de atendimento exige designacao |
-| 15 | Encerrados nao aceitam alteracoes/comentarios | Edicao, designacao e transicoes bloqueadas em encerrados; falta integrar comentarios |
+| 15 | Encerrados nao aceitam alteracoes/comentarios | Implementado: edicao, designacao, transicoes e comentarios bloqueados em encerrados |
 | 16 | Registrar instante de resolucao | Implementado: resolvidoEm preservado na reabertura e atualizado na proxima resolucao |
 | 17 | Maximo de cinco atendimentos por tecnico | Implementado: limite de cinco protegido por bloqueio do tecnico e testes concorrentes de designacao/reabertura |
 | 18 | Proibido atender o proprio chamado | Implementado: proibicao de autoatendimento, inclusive apos troca de perfil |
-| 19 | Comentario apenas do solicitante ou responsavel | Pendente: modulo de comentarios |
-| 20 | Comentario nao vazio | Pendente: modulo de comentarios |
-| 21 | Comentarios imutaveis | Pendente: modulo de comentarios, sem rotas de edicao/exclusao |
+| 19 | Comentario apenas do solicitante ou responsavel | Implementado: autor deve ser solicitante ou tecnico atual, verificado com chamado bloqueado |
+| 20 | Comentario nao vazio | Implementado: corpo textual obrigatorio, nao vazio apos trim |
+| 21 | Comentarios imutaveis | Implementado na API: somente criacao, sem rotas de edicao/exclusao |
 
 ## Proxima etapa e pendencias
 
-- Implementar comentarios: autor ativo, somente solicitante ou tecnico atual, corpo nao vazio,
-  bloqueio de encerrados e ausencia de edicao/exclusao (regras 3, 15, 19, 20 e 21).
-- Criar relacoes de comentarios com chamado e autor, protegidas por chaves estrangeiras.
-- Incluir a conversa ordenada no detalhe do chamado. Essa funcionalidade ainda nao foi implementada.
+- Aplicar a migracao `20261028020000_criar_comentarios` no ambiente com MySQL configurado.
+- Executar testes de integracao com MySQL, incluindo a nova suite de comentarios e regressao completa.
+- Validacao local desta entrega: build e lint aprovados, 37 testes unitarios aprovados
+  (27 novos), schema Prisma valido e client gerado. Diff entre o schema anterior e
+  o atual confirmou o SQL da migracao, sem precisar conectar ao banco.
+- Verificacao TypeScript incluindo testes aprovada (`tsc --noEmit --incremental false --rootDir .`).
+  Imports de tipos do Supertest foram ajustados para a resolucao ESM/NodeNext existente.
 - Definir identificacao/autenticacao do autor. Por enquanto, a abertura recebe solicitanteId;
   isso identifica o cadastro referenciado, sem autenticar a identidade de quem envia a requisicao.
-- Manter validacoes de comentarios na mesma transacao e bloquear a linha do chamado para
-  impedir comentario simultaneo ao fechamento/cancelamento.
+- Comentarios usam transacao ReadCommitted, bloqueio do chamado seguido do autor e repeticao
+  de conflitos P2034. A conversa aparece no detalhe, ordenada por criadoEm e id.
+- Relacoes com chamado e autor usam chaves estrangeiras Restrict. O historico do autor e
+  marcado na mesma transacao e autores anteriores permanecem na conversa apos troca de tecnico.
+- Esta copia esta em outro computador, sem `.env` ou servico MySQL disponivel;
+  por orientacao do usuario, a conexao existente sera mantida no ambiente original.
+  os resultados de testes da entrega anterior abaixo sao historicos, nao desta implementacao.
 
 ## Revisao da entrega de chamados
 

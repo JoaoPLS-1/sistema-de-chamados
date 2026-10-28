@@ -2,7 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { SituacaoChamado, TipoPessoa } from '../src/generated/prisma/enums.js';
@@ -135,7 +135,7 @@ describe('Chamados (e2e com MySQL)', () => {
     await request(http())
       .get('/chamados/' + chamado.id)
       .expect(200)
-      .expect(chamado);
+      .expect({ ...chamado, comentarios: [] });
     const lista = await request(http()).get('/chamados').expect(200);
     expect(lista.body).toContainEqual(chamado);
     const ids = lista.body.map((c: { id: number }) => c.id);
@@ -192,7 +192,7 @@ describe('Chamados (e2e com MySQL)', () => {
     await request(http())
       .get('/chamados/' + chamado.id)
       .expect(200)
-      .expect(atualizada.body);
+      .expect({ ...atualizada.body, comentarios: [] });
   });
 
   it.each([

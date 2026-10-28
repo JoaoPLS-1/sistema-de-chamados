@@ -90,7 +90,13 @@ export class ChamadosService {
   async buscar(id: number) {
     const chamado = await this.prisma.chamado.findUnique({
       where: { id },
-      include: detalhes,
+      include: {
+        ...detalhes,
+        comentarios: {
+          include: { autor: { select: { id: true, nome: true } } },
+          orderBy: [{ criadoEm: 'asc' }, { id: 'asc' }],
+        },
+      },
     });
     if (!chamado) throw new NotFoundException('Chamado não encontrado');
     return chamado;

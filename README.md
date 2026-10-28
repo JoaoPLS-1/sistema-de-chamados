@@ -299,5 +299,51 @@ Violacoes de regra retornam 409, dados invalidos 400 e registros inexistentes 40
 
 Migracao `20261028010000_criar_chamados` aplicada em tarefas. Build, lint,
 10 testes unitarios e 141 de integracao aprovados. Comentarios, conversa no detalhe
-e identificacao/autenticacao do autor continuam registrados como pendencias em
+e identificacao/autenticacao do autor foram registrados como pendencias em
 [andamento das regras](docs/andamento-regras.md).
+
+## Modulo de comentarios
+
+O proximo modulo foi implementado em `orm-basico/src/comentarios/`:
+
+- `POST /chamados/:chamadoId/comentarios`: registra comentario (201).
+- `GET /chamados/:id`: inclui `comentarios`, ordenados por `criadoEm` e `id`,
+  com o ID e nome do autor. A listagem geral de chamados nao carrega a conversa.
+
+```json
+{"autorId":1,"corpo":"O problema continua ao tentar acessar o sistema."}
+```
+
+O autor deve estar ativo e ser o solicitante ou o tecnico atualmente responsavel.
+O corpo e obrigatorio, textual e nao vazio apos remover espacos das pontas.
+Chamados ABERTO, EM_ATENDIMENTO e RESOLVIDO aceitam comentarios; FECHADO e
+CANCELADO retornam 409. Pessoa ou chamado inexistente retorna 404 e dados
+invalidos retornam 400. Nao existem rotas para editar ou apagar comentarios.
+
+O registro bloqueia chamado e autor na mesma transacao, coordenando com encerramento,
+troca de tecnico e desativacao. A conversa preserva comentarios de tecnicos anteriores.
+Chaves estrangeiras protegem o chamado e o autor, e o marcador de historico do autor
+e mantido. `autorId` identifica um cadastro; a API ainda nao autentica quem envia a
+requisicao, assim como ocorre com `solicitanteId` na abertura de chamados.
+
+A migracao `20261028020000_criar_comentarios` foi adicionada. Para preparar o
+ambiente, configure `orm-basico/.env` a partir do exemplo com a conexao MySQL
+e execute dentro de `orm-basico/`:
+
+```powershell
+npm ci
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js generate
+npm run build
+npm run lint
+npm test
+npm run test:e2e
+```
+
+A validacao local passou em build, lint e 37 testes unitarios (27 novos). O schema
+Prisma foi validado, o client gerado e o SQL da migracao conferido por diff entre schemas.
+
+A suite `test/comentarios.e2e-spec.ts` cobre participantes, inatividade, encerramento,
+validacao, imutabilidade, ordenacao, historico, chaves estrangeiras e encerramentos
+concorrentes. Nesta copia, a migracao e os testes com MySQL ainda nao foram executados:
+o `.env` e o servico MySQL usados nas entregas anteriores nao estao disponiveis.

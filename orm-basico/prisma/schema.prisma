@@ -26,16 +26,17 @@ enum TipoPessoa {
 }
 
 model Pessoa {
-  id                   Int        @id @default(autoincrement())
-  nome                 String     @db.VarChar(191)
-  email                String     @unique @db.VarChar(254)
+  id                   Int          @id @default(autoincrement())
+  nome                 String       @db.VarChar(191)
+  email                String       @unique @db.VarChar(254)
   tipo                 TipoPessoa
-  ativa                Boolean    @default(true)
-  temHistoricoChamados Boolean    @default(false)
-  criadaEm             DateTime   @default(now())
-  atualizadaEm         DateTime   @updatedAt
-  chamadosAbertos      Chamado[]  @relation("SolicitanteChamado")
-  chamadosAtribuidos   Chamado[]  @relation("TecnicoChamado")
+  ativa                Boolean      @default(true)
+  temHistoricoChamados Boolean      @default(false)
+  criadaEm             DateTime     @default(now())
+  atualizadaEm         DateTime     @updatedAt
+  chamadosAbertos      Chamado[]    @relation("SolicitanteChamado")
+  chamadosAtribuidos   Chamado[]    @relation("TecnicoChamado")
+  comentarios          Comentario[]
 }
 
 model TipoProblema {
@@ -78,10 +79,24 @@ model Chamado {
   solicitante    Pessoa            @relation("SolicitanteChamado", fields: [solicitanteId], references: [id], onDelete: Restrict)
   tecnico        Pessoa?           @relation("TecnicoChamado", fields: [tecnicoId], references: [id], onDelete: Restrict)
   tipoProblema   TipoProblema      @relation(fields: [tipoProblemaId], references: [id], onDelete: Restrict)
+  comentarios    Comentario[]
 
   @@index([tecnicoId, situacao])
   @@index([situacao])
   @@index([prioridade])
   @@index([tipoProblemaId])
   @@index([solicitanteId])
+}
+
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  corpo     String   @db.LongText
+  chamadoId Int
+  autorId   Int
+  criadoEm  DateTime @default(now())
+  chamado   Chamado  @relation(fields: [chamadoId], references: [id], onDelete: Restrict)
+  autor     Pessoa   @relation(fields: [autorId], references: [id], onDelete: Restrict)
+
+  @@index([chamadoId, criadoEm, id])
+  @@index([autorId])
 }
